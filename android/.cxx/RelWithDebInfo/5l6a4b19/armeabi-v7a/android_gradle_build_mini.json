@@ -1,0 +1,27 @@
+{
+  "buildFiles": [
+    "/Users/geko/tmp/yolo-flutter-v4/android/src/main/cpp/CMakeLists.txt"
+  ],
+  "cleanCommandsComponents": [
+    [
+      "/Users/geko/Library/Android/sdk/cmake/3.22.1/bin/ninja",
+      "-C",
+      "/Users/geko/tmp/yolo-flutter-v4/android/.cxx/RelWithDebInfo/5l6a4b19/armeabi-v7a",
+      "clean"
+    ]
+  ],
+  "buildTargetsCommandComponents": [
+    "/Users/geko/Library/Android/sdk/cmake/3.22.1/bin/ninja",
+    "-C",
+    "/Users/geko/tmp/yolo-flutter-v4/android/.cxx/RelWithDebInfo/5l6a4b19/armeabi-v7a",
+    "{LIST_OF_TARGETS_TO_BUILD}"
+  ],
+  "libraries": {
+    "ultralytics::@6890427a1f51a3e7e1df": {
+      "artifactName": "ultralytics",
+      "abi": "armeabi-v7a",
+      "output": "/Users/geko/work/testingyolo/build/ultralytics_yolo/intermediates/cxx/RelWithDebInfo/5l6a4b19/obj/armeabi-v7a/libultralytics.so",
+      "runtimeFiles": []
+    }
+  }
+}
