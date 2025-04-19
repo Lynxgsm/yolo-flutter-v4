@@ -8,11 +8,14 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   test('YoloView passes correct parameters to platform view', () {
-    const view = YoloView(
+    final view = YoloView(
       modelPath: 'test_model.tflite',
       task: YOLOTask.segment,
+      onResult: (result) {
+        debugPrint(result.toString());
+      },
     );
-    
+
     // Verify properties are correctly set
     expect(view.modelPath, equals('test_model.tflite'));
     expect(view.task, equals(YOLOTask.segment));

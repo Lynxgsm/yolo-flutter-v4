@@ -14,6 +14,7 @@ Flutter plugin for YOLO (You Only Look Once) models, supporting object detection
 - **Cross-Platform**: Works on both Android and iOS
 - **Real-time Processing**: Optimized for real-time inference on mobile devices
 - **Camera Integration**: Easy integration with device cameras
+- **Flexible Format Support**: Handles different bounding box coordinate formats (x,y,width,height or x1,y1,x2,y2)
 
 ## Installation
 
@@ -83,8 +84,11 @@ class YoloDemo extends StatelessWidget {
           modelPath: 'assets/models/yolo11n.tflite',
           threshold: 0.5,
           onResult: (results) {
-            // Handle detection results
+            // Handle multiple detection results
             print('Detected ${results.length} objects');
+            for (var detection in results) {
+              print('${detection.className}: ${detection.confidence.toStringAsFixed(2)}');
+            }
           },
         ),
       ),
@@ -110,6 +114,36 @@ YoloView(
 )
 ```
 
+### Single Image Inference
+
+```dart
+// Initialize YOLO
+final yolo = YOLO(
+  modelPath: 'assets/models/yolo11n.tflite',
+  task: YOLOTask.detect,
+);
+
+// Load model
+await yolo.loadModel();
+
+// Process an image
+Uint8List imageBytes = await yourImageLoadingFunction();
+final resultMap = await yolo.predict(imageBytes);
+
+// Access all detection results
+List<YOLOResult> detections = resultMap['results'];
+for (var detection in detections) {
+  print('Class: ${detection.className}, Confidence: ${detection.confidence}');
+  print('Bounding box: ${detection.boundingBox}');
+}
+
+// Access the annotated image if available
+if (resultMap.containsKey('annotatedImage')) {
+  Uint8List annotatedImage = resultMap['annotatedImage'];
+  // Use the annotated image in your UI
+}
+```
+
 ### Image Segmentation
 
 ```dart
@@ -119,6 +153,13 @@ YoloView(
   threshold: 0.5,
   onResult: (results) {
     // Process segmentation results
+    for (var result in results) {
+      if (result.mask != null) {
+        // Access segmentation mask data
+        var mask = result.mask!;
+        // Do something with the mask
+      }
+    }
   },
 )
 ```
@@ -132,6 +173,13 @@ YoloView(
   threshold: 0.5,
   onResult: (results) {
     // Process pose keypoints
+    for (var result in results) {
+      if (result.keypoints != null) {
+        for (var point in result.keypoints!) {
+          print('Keypoint at: (${point.x}, ${point.y})');
+        }
+      }
+    }
   },
 )
 ```
@@ -150,6 +198,10 @@ YOLO({
   required YOLOTask task,
   double threshold = 0.5,
 });
+
+// Methods
+Future<bool> loadModel(); // Load the model
+Future<Map<String, dynamic>> predict(Uint8List imageBytes); // Run inference
 ```
 
 #### YoloView
@@ -163,13 +215,13 @@ YoloView({
   double threshold = 0.5,
   bool useCamera = false,
   String cameraResolution = '720p',
-  Function(List<YOLOResult>)? onResult,
+  required Function(List<YOLOResult>) onResult,
 });
 ```
 
 #### YOLOResult
 
-Contains detection results.
+Contains detection results with serialization/deserialization support.
 
 ```dart
 class YOLOResult {
@@ -181,6 +233,44 @@ class YOLOResult {
   final List<List<double>>? mask;
   // For pose estimation
   final List<Point>? keypoints;
+
+  // Constructor
+  YOLOResult({
+    required this.classIndex,
+    required this.className,
+    required this.confidence,
+    required this.boundingBox,
+    this.mask,
+    this.keypoints,
+  });
+
+  // Create from map - supports both x,y,width,height and x1,y1,x2,y2 formats
+  factory YOLOResult.fromMap(Map<String, dynamic> map);
+
+  // Convert to map
+  Map<String, dynamic> toMap();
+
+  // String representation
+  @override
+  String toString();
+
+  // Equality operators
+  @override
+  bool operator ==(Object other);
+
+  @override
+  int get hashCode;
+}
+
+class Point {
+  final double x;
+  final double y;
+
+  Point({required this.x, required this.y});
+
+  // Serialization methods
+  factory Point.fromMap(Map<String, dynamic> map);
+  Map<String, dynamic> toMap();
 }
 ```
 
@@ -201,26 +291,34 @@ enum YOLOTask {
 ## Platform Support
 
 | Android | iOS | Web | macOS | Windows | Linux |
-|:-------:|:---:|:---:|:-----:|:-------:|:-----:|
-|    ✅    |  ✅  |  ❌  |   ❌   |    ❌    |   ❌   |
+| :-----: | :-: | :-: | :---: | :-----: | :---: |
+|   ✅    | ✅  | ❌  |  ❌   |   ❌    |  ❌   |
 
 ## Troubleshooting
 
 ### Common Issues
 
 1. **Model loading fails**
+
    - Make sure your model file is correctly placed in the assets directory
    - Verify that the model path is correctly specified
    - Check that the model format is compatible with TFLite
 
 2. **Low performance on older devices**
+
    - Try using smaller models (e.g., YOLOv8n instead of YOLOv8l)
    - Reduce input image resolution
    - Adjust threshold values to reduce the number of detections
 
 3. **Camera permission issues**
+
    - Ensure that your app has the proper permissions in the manifest or Info.plist
    - Handle runtime permissions properly in your app
+
+4. **No detection results**
+   - Verify that the onResult callback is correctly implemented to handle a list of results
+   - Check that your model path is correct
+   - Make sure the image format is compatible with the model
 
 ## License
 

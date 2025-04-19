@@ -2,15 +2,13 @@ import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ultralytics_yolo/yolo.dart';
+import 'package:ultralytics_yolo/yolo_result.dart';
 import 'package:ultralytics_yolo/yolo_platform_interface.dart';
 import 'package:ultralytics_yolo/yolo_method_channel.dart';
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 import 'package:flutter/services.dart';
 
-class MockYoloPlatform
-    with MockPlatformInterfaceMixin
-    implements YoloPlatform {
-
+class MockYoloPlatform with MockPlatformInterfaceMixin implements YoloPlatform {
   @override
   Future<String?> getPlatformVersion() => Future.value('42');
 }
@@ -24,11 +22,12 @@ void main() {
 
   setUp(() {
     // Configure mock response for the channel
-    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(
       channel,
       (MethodCall methodCall) async {
         log.add(methodCall);
-        
+
         if (methodCall.method == 'loadModel') {
           return true;
         } else if (methodCall.method == 'predictSingleImage') {
@@ -36,7 +35,8 @@ void main() {
           return {
             'boxes': [
               {
-                'class': 'person',
+                'classIndex': 0,
+                'className': 'person',
                 'confidence': 0.95,
                 'x': 10,
                 'y': 10,
@@ -53,7 +53,8 @@ void main() {
   });
 
   tearDown(() {
-    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(channel, null);
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, null);
     log.clear();
   });
 
@@ -71,13 +72,13 @@ void main() {
         modelPath: 'test_model.tflite',
         task: YOLOTask.detect,
       );
-      
+
       // Execute the loadModel method
       final result = await testYolo.loadModel();
-      
+
       // Verify result
       expect(result, isTrue);
-      
+
       // Verify the correct method was called with proper parameters
       expect(log, hasLength(1));
       expect(log[0].method, 'loadModel');
@@ -93,21 +94,32 @@ void main() {
         modelPath: 'test_model.tflite',
         task: YOLOTask.detect,
       );
-      
+
       // Create a dummy image
       final Uint8List dummyImage = Uint8List.fromList(List.filled(100, 0));
-      
+
       // Execute predict method
       final result = await testYolo.predict(dummyImage);
-      
+
       // Verify result
       expect(result, isA<Map<String, dynamic>>());
       expect(result.containsKey('boxes'), isTrue);
       expect(result['boxes'], isA<List>());
       expect(result['boxes'].length, 1);
-      expect(result['boxes'][0]['class'], 'person');
-      expect(result['boxes'][0]['confidence'], 0.95);
-      
+
+      // Check for YOLOResult list in the result map
+      expect(result.containsKey('results'), isTrue);
+      expect(result['results'], isA<List<YOLOResult>>());
+      expect(result['results'].length, 1);
+
+      var firstResult = result['results'][0];
+      expect(firstResult.className, 'person');
+      expect(firstResult.confidence, 0.95);
+      expect(firstResult.boundingBox.left, 10);
+      expect(firstResult.boundingBox.top, 10);
+      expect(firstResult.boundingBox.width, 100);
+      expect(firstResult.boundingBox.height, 200);
+
       // Verify the correct method was called with proper parameters
       expect(log, hasLength(1));
       expect(log[0].method, 'predictSingleImage');
@@ -123,7 +135,7 @@ void main() {
       expect(YOLOTask.pose.toString(), contains('pose'));
       expect(YOLOTask.obb.toString(), contains('obb'));
     });
-    
+
     test('All task types have a valid name', () {
       expect(YOLOTask.detect.name, equals('detect'));
       expect(YOLOTask.segment.name, equals('segment'));
