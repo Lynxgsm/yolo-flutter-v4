@@ -1,0 +1,3 @@
+# ninja log v5
+0	150	1744901522103907761	CMakeFiles/ultralytics.dir/native-lib.cpp.o	fc543d61d6a61b95
+150	194	1744901522147214351	/Users/geko/work/testingyolo/build/ultralytics_yolo/intermediates/cxx/Debug/592k4b67/obj/x86/libultralytics.so	d150345157665da5

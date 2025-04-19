@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1, user-scalable=no">
+  <meta name="description" content="yolo API docs, for the Dart programming language.">
+  <title>yolo - Dart API docs</title>
+
+
+  
+  <link rel="preconnect" href="https://fonts.gstatic.com">
+  <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:ital,wght@0,300;0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet">
+  
+  <link rel="stylesheet" href="static-assets/github.css?v1">
+  <link rel="stylesheet" href="static-assets/styles.css?v1">
+  <link rel="icon" href="static-assets/favicon.png?v1">
+
+  
+</head>
+
+
+<body data-base-href="" data-using-base-href="false" class="light-theme">
+
+<div id="overlay-under-drawer"></div>
+
+<header id="title">
+  <span id="sidenav-left-toggle" class="material-symbols-outlined" role="button" tabindex="0">menu</span>
+  <ol class="breadcrumbs gt-separated dark hidden-xs">
+    <li><a href="https://github.com/ultralytics/yolo-flutter-app">yolo package</a></li>
+  </ol>
+  <div class="self-name">yolo</div>
+  <form class="search navbar-right" role="search">
+    <input type="text" id="search-box" autocomplete="off" disabled class="form-control typeahead" placeholder="Loading search...">
+  </form>
+  <div class="toggle" id="theme-button" title="Toggle brightness">
+    <label for="theme">
+      <input type="checkbox" id="theme" value="light-theme">
+      <span id="dark-theme-button" class="material-symbols-outlined">
+        dark_mode
+      </span>
+      <span id="light-theme-button" class="material-symbols-outlined">
+        light_mode
+      </span>
+    </label>
+  </div>
+</header>
+<main>
+
+  <div id="dartdoc-main-content" class="main-content">
+      
+<section class="desc markdown">
+  <h1 id="yolo-flutter-package">YOLO Flutter Package</h1>
+<p>Flutter plugin for YOLO (You Only Look Once) models, supporting object detection, segmentation, classification, pose estimation and oriented bounding boxes (OBB) on both Android and iOS.</p>
+<p><a href="https://www.gnu.org/licenses/agpl-3.0"><img src="https://img.shields.io/badge/License-AGPL%20v3-blue.svg" alt="License: AGPL v3"></a></p>
+<h2 id="features">Features</h2>
+<ul>
+<li><strong>Object Detection</strong>: Identify and locate objects in images and camera feeds with bounding boxes</li>
+<li><strong>Segmentation</strong>: Perform pixel-level segmentation of objects</li>
+<li><strong>Classification</strong>: Classify objects in images</li>
+<li><strong>Pose Estimation</strong>: Detect human poses and keypoints</li>
+<li><strong>Oriented Bounding Boxes (OBB)</strong>: Detect rotated or oriented bounding boxes for objects</li>
+<li><strong>Cross-Platform</strong>: Works on both Android and iOS</li>
+<li><strong>Real-time Processing</strong>: Optimized for real-time inference on mobile devices</li>
+<li><strong>Camera Integration</strong>: Easy integration with device cameras</li>
+</ul>
+<h2 id="installation">Installation</h2>
+<p>Add this to your package's <code>pubspec.yaml</code> file:</p>
+<pre class="language-yaml"><code class="language-yaml">dependencies:
+  yolo: ^0.0.1
+</code></pre>
+<p>Then run:</p>
+<pre class="language-bash"><code class="language-bash">flutter pub get
+</code></pre>
+<h2 id="platform-specific-setup">Platform-Specific Setup</h2>
+<h3 id="android">Android</h3>
+<p>Add the following permissions to your <code>AndroidManifest.xml</code> file:</p>
+<pre class="language-xml"><code class="language-xml">&lt;!-- For camera access --&gt;
+&lt;uses-permission android:name="android.permission.CAMERA" /&gt;
+
+&lt;!-- For accessing images from storage --&gt;
+&lt;uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" /&gt;
+&lt;uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" /&gt;
+</code></pre>
+<p>Set minimum SDK version in your <code>android/app/build.gradle</code>:</p>
+<pre class="language-gradle"><code class="language-gradle">minSdkVersion 21
+</code></pre>
+<h3 id="ios">iOS</h3>
+<p>Add these entries to your <code>Info.plist</code>:</p>
+<pre class="language-xml"><code class="language-xml">&lt;key&gt;NSCameraUsageDescription&lt;/key&gt;
+&lt;string&gt;This app needs camera access to detect objects&lt;/string&gt;
+&lt;key&gt;NSPhotoLibraryUsageDescription&lt;/key&gt;
+&lt;string&gt;This app needs photos access to get images for object detection&lt;/string&gt;
+</code></pre>
+<h2 id="usage">Usage</h2>
+<h3 id="basic-example">Basic Example</h3>
+<pre class="language-dart"><code class="language-dart">import 'package:flutter/material.dart';
+import 'package:yolo/yolo.dart';
+import 'package:yolo/yolo_view.dart';
+import 'package:yolo/yolo_task.dart';
+
+class YoloDemo extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text('YOLO Object Detection')),
+      body: Center(
+        child: YoloView(
+          task: YOLOTask.detect,
+          modelPath: 'assets/models/yolo11n.tflite',
+          threshold: 0.5,
+          onResult: (results) {
+            // Handle detection results
+            print('Detected ${results.length} objects');
+          },
+        ),
+      ),
+    );
+  }
+}
+</code></pre>
+<h3 id="object-detection-with-camera-feed">Object Detection with Camera Feed</h3>
+<pre class="language-dart"><code class="language-dart">YoloView(
+  task: YOLOTask.detect,
+  modelPath: 'assets/models/yolo11n.tflite',
+  useCamera: true,
+  cameraResolution: '720p',
+  threshold: 0.5,
+  onResult: (results) {
+    for (var result in results) {
+      print('Detected: ${result.className}, Confidence: ${result.confidence}');
+    }
+  },
+)
+</code></pre>
+<h3 id="image-segmentation">Image Segmentation</h3>
+<pre class="language-dart"><code class="language-dart">YoloView(
+  task: YOLOTask.segment,
+  modelPath: 'assets/models/yolo11n-seg.tflite',
+  threshold: 0.5,
+  onResult: (results) {
+    // Process segmentation results
+  },
+)
+</code></pre>
+<h3 id="pose-estimation">Pose Estimation</h3>
+<pre class="language-dart"><code class="language-dart">YoloView(
+  task: YOLOTask.pose,
+  modelPath: 'assets/models/yolo11n-pose.tflite',
+  threshold: 0.5,
+  onResult: (results) {
+    // Process pose keypoints
+  },
+)
+</code></pre>
+<h2 id="api-reference">API Reference</h2>
+<h3 id="classes">Classes</h3>
+<h4 id="yolo">YOLO</h4>
+<p>Main class for YOLO operations.</p>
+<pre class="language-dart"><code class="language-dart">YOLO({
+  required String modelPath,
+  required YOLOTask task,
+  double threshold = 0.5,
+});
+</code></pre>
+<h4 id="yoloview">YoloView</h4>
+<p>Flutter widget to display YOLO detection results.</p>
+<pre class="language-dart"><code class="language-dart">YoloView({
+  required YOLOTask task,
+  required String modelPath,
+  double threshold = 0.5,
+  bool useCamera = false,
+  String cameraResolution = '720p',
+  Function(List&lt;YOLOResult&gt;)? onResult,
+});
+</code></pre>
+<h4 id="yoloresult">YOLOResult</h4>
+<p>Contains detection results.</p>
+<pre class="language-dart"><code class="language-dart">class YOLOResult {
+  final int classIndex;
+  final String className;
+  final double confidence;
+  final Rect boundingBox;
+  // For segmentation
+  final List&lt;List&lt;double&gt;&gt;? mask;
+  // For pose estimation
+  final List&lt;Point&gt;? keypoints;
+}
+</code></pre>
+<h3 id="enums">Enums</h3>
+<h4 id="yolotask">YOLOTask</h4>
+<pre class="language-dart"><code class="language-dart">enum YOLOTask {
+  detect,   // Object detection
+  segment,  // Image segmentation
+  classify, // Image classification
+  pose,     // Pose estimation
+  obb,      // Oriented bounding boxes
+}
+</code></pre>
+<h2 id="platform-support">Platform Support</h2>
+<table>
+<thead>
+<tr>
+<th align="center">Android</th>
+<th align="center">iOS</th>
+<th align="center">Web</th>
+<th align="center">macOS</th>
+<th align="center">Windows</th>
+<th align="center">Linux</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td align="center">✅</td>
+<td align="center">✅</td>
+<td align="center">❌</td>
+<td align="center">❌</td>
+<td align="center">❌</td>
+<td align="center">❌</td>
+</tr>
+</tbody>
+</table>
+<h2 id="troubleshooting">Troubleshooting</h2>
+<h3 id="common-issues">Common Issues</h3>
+<ol>
+<li>
+<p><strong>Model loading fails</strong></p>
+<ul>
+<li>Make sure your model file is correctly placed in the assets directory</li>
+<li>Verify that the model path is correctly specified</li>
+<li>Check that the model format is compatible with TFLite</li>
+</ul>
+</li>
+<li>
+<p><strong>Low performance on older devices</strong></p>
+<ul>
+<li>Try using smaller models (e.g., YOLOv8n instead of YOLOv8l)</li>
+<li>Reduce input image resolution</li>
+<li>Adjust threshold values to reduce the number of detections</li>
+</ul>
+</li>
+<li>
+<p><strong>Camera permission issues</strong></p>
+<ul>
+<li>Ensure that your app has the proper permissions in the manifest or Info.plist</li>
+<li>Handle runtime permissions properly in your app</li>
+</ul>
+</li>
+</ol>
+<h2 id="license">License</h2>
+<p>This project is licensed under the GNU Affero General Public License v3.0 (AGPL-3.0) - see the <a href="LICENSE.txt">LICENSE.txt</a> file for details.</p>
+</section>
+
+
+      <section class="summary">
+          <h2>Libraries</h2>
+        <dl>
+          <dt id="yolo">
+  <span class="name"><a href="yolo/yolo-library.html">yolo</a></span> 
+
+</dt>
+<dd>
+</dd>
+
+          <dt id="yolo_exceptions">
+  <span class="name"><a href="yolo_exceptions/yolo_exceptions-library.html">yolo_exceptions</a></span> 
+
+</dt>
+<dd>
+</dd>
+
+          <dt id="yolo_method_channel">
+  <span class="name"><a href="yolo_method_channel/yolo_method_channel-library.html">yolo_method_channel</a></span> 
+
+</dt>
+<dd>
+</dd>
+
+          <dt id="yolo_platform_interface">
+  <span class="name"><a href="yolo_platform_interface/yolo_platform_interface-library.html">yolo_platform_interface</a></span> 
+
+</dt>
+<dd>
+</dd>
+
+          <dt id="yolo_task">
+  <span class="name"><a href="yolo_task/yolo_task-library.html">yolo_task</a></span> 
+
+</dt>
+<dd>
+</dd>
+
+          <dt id="yolo_view">
+  <span class="name"><a href="yolo_view/yolo_view-library.html">yolo_view</a></span> 
+
+</dt>
+<dd>
+</dd>
+
+        </dl>
+      </section>
+
+  </div> <!-- /.main-content -->
+
+  <div id="dartdoc-sidebar-left" class="sidebar sidebar-offcanvas-left">
+    <!-- The search input and breadcrumbs below are only responsively visible at low resolutions. -->
+<header id="header-search-sidebar" class="hidden-l">
+  <form class="search-sidebar" role="search">
+    <input type="text" id="search-sidebar" autocomplete="off" disabled class="form-control typeahead" placeholder="Loading search...">
+  </form>
+</header>
+
+<ol class="breadcrumbs gt-separated dark hidden-l" id="sidebar-nav">
+    <li><a href="https://github.com/ultralytics/yolo-flutter-app">yolo package</a></li>
+</ol>
+
+
+    <h5 class="hidden-xs"><span class="package-name">yolo</span> <span class="package-kind">package</span></h5>
+    <ol>
+      <li class="section-title">Libraries</li>
+      <li><a href="yolo/yolo-library.html">yolo</a></li>
+      <li><a href="yolo_exceptions/yolo_exceptions-library.html">yolo_exceptions</a></li>
+      <li><a href="yolo_method_channel/yolo_method_channel-library.html">yolo_method_channel</a></li>
+      <li><a href="yolo_platform_interface/yolo_platform_interface-library.html">yolo_platform_interface</a></li>
+      <li><a href="yolo_task/yolo_task-library.html">yolo_task</a></li>
+      <li><a href="yolo_view/yolo_view-library.html">yolo_view</a></li>
+</ol>
+
+  </div>
+
+  <div id="dartdoc-sidebar-right" class="sidebar sidebar-offcanvas-right">
+  </div>
+
+</main>
+
+<footer>
+  <span class="no-break">
+    yolo
+      0.0.1
+  </span>
+
+  
+</footer>
+
+
+
+<script src="static-assets/highlight.pack.js?v1"></script>
+<script src="static-assets/docs.dart.js"></script>
+
+
+
+</body>
+
+</html>
+
