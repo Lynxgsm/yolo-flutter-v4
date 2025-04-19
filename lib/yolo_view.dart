@@ -22,9 +22,10 @@ import 'package:ultralytics_yolo/yolo_result.dart';
 ///   onResult: (results) {
 ///     // Handle the detection results
 ///     for (var result in results) {
-///       print('Detected: ${result.className}');
+///       print('Detected: ${result.label}');
 ///     }
 ///   },
+///   showBoxes: true, // Control visibility of detection boxes
 /// )
 /// ```
 class YoloView extends StatefulWidget {
@@ -37,11 +38,15 @@ class YoloView extends StatefulWidget {
   /// The [onResult] is a callback function that will be called when the inference results are available.
   final Function(List<YOLOResult>) onResult;
 
+  /// Whether to display detection boxes in the view.
+  final bool showBoxes;
+
   const YoloView({
     super.key,
     required this.modelPath,
     required this.task,
     required this.onResult,
+    this.showBoxes = true,
   });
 
   @override
@@ -100,6 +105,7 @@ class _YoloViewState extends State<YoloView> {
     final creationParams = <String, dynamic>{
       'modelPath': widget.modelPath,
       'task': widget.task.name,
+      'showBoxes': widget.showBoxes,
     };
 
     if (defaultTargetPlatform == TargetPlatform.android) {

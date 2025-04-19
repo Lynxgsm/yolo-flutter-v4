@@ -35,8 +35,8 @@ void main() {
           return {
             'boxes': [
               {
-                'classIndex': 0,
-                'className': 'person',
+                'index': 0,
+                'label': 'person',
                 'confidence': 0.95,
                 'x': 10,
                 'y': 10,
@@ -113,7 +113,7 @@ void main() {
       expect(result['results'].length, 1);
 
       var firstResult = result['results'][0];
-      expect(firstResult.className, 'person');
+      expect(firstResult.label, 'person');
       expect(firstResult.confidence, 0.95);
       expect(firstResult.boundingBox.left, 10);
       expect(firstResult.boundingBox.top, 10);

@@ -25,8 +25,10 @@ public class YOLOView: UIView, VideoCaptureDelegate {
   }
 
   func onPredict(result: YOLOResult) {
-
-    showBoxes(predictions: result)
+    // Only show boxes if enabled
+    if showBoxes {
+      showBoxes(predictions: result)
+    }
     onDetection?(result)
 
     if task == .segment {
@@ -89,6 +91,8 @@ public class YOLOView: UIView, VideoCaptureDelegate {
   var classes: [String] = []
   let maxBoundingBoxViews = 100
   var boundingBoxViews = [BoundingBoxView]()
+  // Flag to control whether to show detection boxes
+  private var showBoxes: Bool = true
   public var sliderNumItems = UISlider()
   public var labelSliderNumItems = UILabel()
   public var sliderConf = UISlider()
@@ -1078,6 +1082,38 @@ public class YOLOView: UIView, VideoCaptureDelegate {
 
   public func setInferenceFlag(ok: Bool) {
     videoCapture.inferenceOK = ok
+  }
+
+  /**
+   * Set whether to show detection boxes in the view
+   */
+  public func setShowBoxes(_ show: Bool) {
+    self.showBoxes = show
+    
+    // Hide all bounding box views if showing is disabled
+    if !show {
+      for box in boundingBoxViews {
+        box.hide()
+      }
+      
+      // Also hide other visualizations based on task
+      if task == .segment {
+        maskLayer?.isHidden = true
+      } else if task == .pose {
+        poseLayer?.isHidden = true
+      } else if task == .obb {
+        obbLayer?.isHidden = true
+      }
+    } else {
+      // Restore visualization layers based on task
+      if task == .segment {
+        maskLayer?.isHidden = false
+      } else if task == .pose {
+        poseLayer?.isHidden = false
+      } else if task == .obb {
+        obbLayer?.isHidden = false
+      }
+    }
   }
 }
 

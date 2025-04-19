@@ -1,8 +1,8 @@
 import 'dart:ui';
 
 class YOLOResult {
-  final int classIndex;
-  final String className;
+  final int index;
+  final String label;
   final double confidence;
   final Rect boundingBox;
   // For segmentation
@@ -11,8 +11,8 @@ class YOLOResult {
   final List<Point>? keypoints;
 
   YOLOResult({
-    required this.classIndex,
-    required this.className,
+    required this.index,
+    required this.label,
     required this.confidence,
     required this.boundingBox,
     this.mask,
@@ -21,10 +21,10 @@ class YOLOResult {
 
   factory YOLOResult.fromMap(Map<String, dynamic> map) {
     // Extract class information
-    final classIdx = map['classIndex'] ?? 0;
+    final classIdx = map['index'] ?? 0;
 
-    // Handle class name which could be in 'className', 'class', or 'label' fields
-    final cls = (map['className'] ?? map['class'] ?? map['label'] ?? 'unknown')
+    // Handle class name which could be in 'label', 'class', or 'className' fields
+    final cls = (map['label'] ?? map['class'] ?? map['className'] ?? 'unknown')
         .toString();
 
     // Extract confidence
@@ -53,8 +53,8 @@ class YOLOResult {
     }
 
     return YOLOResult(
-      classIndex: classIdx,
-      className: cls,
+      index: classIdx,
+      label: cls,
       confidence: conf,
       boundingBox: bbox,
       mask: map['mask'] != null
@@ -83,8 +83,8 @@ class YOLOResult {
 
   Map<String, dynamic> toMap() {
     return {
-      'classIndex': classIndex,
-      'className': className,
+      'index': index,
+      'label': label,
       'confidence': confidence,
       'x': boundingBox.left,
       'y': boundingBox.top,
@@ -98,23 +98,23 @@ class YOLOResult {
 
   @override
   String toString() {
-    return 'YOLOResult{classIndex: $classIndex, className: $className, confidence: $confidence, boundingBox: $boundingBox, mask: ${mask != null ? '[...]' : 'null'}, keypoints: ${keypoints != null ? '[...]' : 'null'}}';
+    return 'YOLOResult{index: $index, label: $label, confidence: $confidence, boundingBox: $boundingBox, mask: ${mask != null ? '[...]' : 'null'}, keypoints: ${keypoints != null ? '[...]' : 'null'}}';
   }
 
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
     return other is YOLOResult &&
-        other.classIndex == classIndex &&
-        other.className == className &&
+        other.index == index &&
+        other.label == label &&
         other.confidence == confidence &&
         other.boundingBox == boundingBox;
   }
 
   @override
   int get hashCode {
-    return classIndex.hashCode ^
-        className.hashCode ^
+    return index.hashCode ^
+        label.hashCode ^
         confidence.hashCode ^
         boundingBox.hashCode;
   }

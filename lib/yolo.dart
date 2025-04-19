@@ -100,7 +100,7 @@ class YOLO {
   /// final resultMap = await yolo.predict(imageBytes);
   /// final yoloResults = resultMap['results'] as List<YOLOResult>;
   /// for (var result in yoloResults) {
-  ///   print('Class: ${result.className}, Confidence: ${result.confidence}');
+  ///   print('Class: ${result.label}, Confidence: ${result.confidence}');
   /// }
   /// ```
   ///

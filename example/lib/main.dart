@@ -188,7 +188,7 @@ class _SingleImageScreenState extends State<SingleImageScreen> {
                   ..._results.map((result) => Padding(
                         padding: const EdgeInsets.all(8.0),
                         child: Text(
-                          'Class: ${result.className}\n'
+                          'Class: ${result.label}\n'
                           'Confidence: ${result.confidence.toStringAsFixed(2)}\n'
                           'Bounding Box: ${result.boundingBox}\n'
                           'Has Mask: ${result.mask != null}\n'

@@ -24,12 +24,18 @@ public class SwiftYoloPlatformView: NSObject, FlutterPlatformView {
            let taskRaw = dict["task"] as? String
             {
             let task = YOLOTask.fromString(taskRaw)
-            // If needed, parse task string into an enum
+            // Get showBoxes parameter with default value of true
+            let showBoxes = dict["showBoxes"] as? Bool ?? true
+            
+            // Create the YOLO view with the specified params
             yoloView = YOLOView(
                 frame: frame,
                 modelPathOrName: modelName,
-                task:task
+                task: task
             )
+            
+            // Set whether to show detection boxes
+            yoloView?.setShowBoxes(showBoxes)
         }
     }
 

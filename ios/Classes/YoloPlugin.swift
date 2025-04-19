@@ -80,7 +80,7 @@ class SingleImageYOLO {
         
         for box in result.boxes {
             var boxDict: [String: Any] = [
-                "cls": box.cls,
+                "label": box.cls,
                 "confidence": box.conf,
                 "index": box.index
             ]

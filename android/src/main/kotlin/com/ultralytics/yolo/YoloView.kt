@@ -160,6 +160,18 @@ class YoloView @JvmOverloads constructor(
     private var iouThreshold = 0.45
     private var numItemsThreshold = 30
 
+    // Flag to control whether to show detection boxes
+    private var showBoxes: Boolean = true
+    
+    /**
+     * Set whether to show detection boxes in the view
+     */
+    fun setShowBoxes(show: Boolean) {
+        this.showBoxes = show
+        // Update overlay visibility immediately
+        overlayView.visibility = if (show) View.VISIBLE else View.INVISIBLE
+    }
+
     init {
         // Clear any existing children
         removeAllViews()

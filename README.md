@@ -87,7 +87,7 @@ class YoloDemo extends StatelessWidget {
             // Handle multiple detection results
             print('Detected ${results.length} objects');
             for (var detection in results) {
-              print('${detection.className}: ${detection.confidence.toStringAsFixed(2)}');
+              print('${detection.label}: ${detection.confidence.toStringAsFixed(2)}');
             }
           },
         ),
@@ -108,7 +108,7 @@ YoloView(
   threshold: 0.5,
   onResult: (results) {
     for (var result in results) {
-      print('Detected: ${result.className}, Confidence: ${result.confidence}');
+      print('Detected: ${result.label}, Confidence: ${result.confidence}');
     }
   },
 )
@@ -133,7 +133,7 @@ final resultMap = await yolo.predict(imageBytes);
 // Access all detection results
 List<YOLOResult> detections = resultMap['results'];
 for (var detection in detections) {
-  print('Class: ${detection.className}, Confidence: ${detection.confidence}');
+  print('Class: ${detection.label}, Confidence: ${detection.confidence}');
   print('Bounding box: ${detection.boundingBox}');
 }
 
@@ -225,8 +225,8 @@ Contains detection results with serialization/deserialization support.
 
 ```dart
 class YOLOResult {
-  final int classIndex;
-  final String className;
+  final int index;
+  final String label;
   final double confidence;
   final Rect boundingBox;
   // For segmentation
@@ -236,8 +236,8 @@ class YOLOResult {
 
   // Constructor
   YOLOResult({
-    required this.classIndex,
-    required this.className,
+    required this.index,
+    required this.label,
     required this.confidence,
     required this.boundingBox,
     this.mask,

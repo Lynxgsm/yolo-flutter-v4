@@ -36,12 +36,14 @@ class YoloPlatformView(
         // Parse model path and task from creation params
         val modelPath = creationParams?.get("modelPath") as? String ?: "yolo11n"
         val taskString = creationParams?.get("task") as? String ?: "detect"
+        // Get showBoxes parameter with default value of true
+        val showBoxes = creationParams?.get("showBoxes") as? Boolean ?: true
         
         try {
             // Convert task string to enum
             val task = YOLOTask.valueOf(taskString.uppercase())
             
-            Log.d(TAG, "Initializing YoloPlatformView with model: $modelPath, task: $task")
+            Log.d(TAG, "Initializing YoloPlatformView with model: $modelPath, task: $task, showBoxes: $showBoxes")
             
             // Set up callback for model loading result
             yoloView.setOnModelLoadCallback { success ->
@@ -59,6 +61,9 @@ class YoloPlatformView(
                 }
             }
             
+            // Set whether to show detection boxes
+            yoloView.setShowBoxes(showBoxes)
+            
             // Set up callback for inference results
             yoloView.setOnInferenceCallback { result ->
                 Log.d(TAG, "Inference result received: ${result.boxes.size} detections")
@@ -73,8 +78,8 @@ class YoloPlatformView(
                         "y1" to box.xywh.top,
                         "x2" to box.xywh.right,
                         "y2" to box.xywh.bottom,
-                        "class" to box.cls,
                         "label" to box.cls,
+                        "index" to box.index,
                         "confidence" to box.conf
                     )
                 }
@@ -119,7 +124,8 @@ class YoloPlatformView(
                                 val poly = obb.box.toPolygon()
                                 mapOf(
                                     "points" to poly.map { mapOf("x" to it.x, "y" to it.y) },
-                                    "class" to obb.cls,
+                                    "label" to obb.cls,
+                                    "index" to obb.index,
                                     "confidence" to obb.confidence
                                 )
                             }
