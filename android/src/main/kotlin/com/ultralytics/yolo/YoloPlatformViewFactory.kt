@@ -6,11 +6,12 @@ import android.util.Log
 import io.flutter.plugin.platform.PlatformView
 import io.flutter.plugin.platform.PlatformViewFactory
 import io.flutter.plugin.common.StandardMessageCodec
+import io.flutter.plugin.common.BinaryMessenger
 
 /**
  * Factory for creating YoloPlatformView instances
  */
-class YoloPlatformViewFactory : PlatformViewFactory(StandardMessageCodec.INSTANCE) {
+class YoloPlatformViewFactory(private val messenger: BinaryMessenger) : PlatformViewFactory(StandardMessageCodec.INSTANCE) {
     private var activity: Activity? = null
     private val TAG = "YoloPlatformViewFactory"
     
@@ -27,6 +28,6 @@ class YoloPlatformViewFactory : PlatformViewFactory(StandardMessageCodec.INSTANC
         val effectiveContext = activity ?: context
         Log.d(TAG, "Creating YoloPlatformView with context: ${effectiveContext.javaClass.simpleName}")
         
-        return YoloPlatformView(effectiveContext, viewId, creationParams)
+        return YoloPlatformView(effectiveContext, viewId, creationParams, messenger)
     }
 }

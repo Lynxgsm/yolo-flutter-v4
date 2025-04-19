@@ -11,6 +11,7 @@ import io.flutter.embedding.engine.plugins.activity.ActivityAware
 import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
+import io.flutter.plugin.common.BinaryMessenger
 import java.io.ByteArrayOutputStream
 
 class YoloPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler {
@@ -21,13 +22,17 @@ class YoloPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler
   private var activity: Activity? = null
   private val TAG = "YoloPlugin"
   private lateinit var viewFactory: YoloPlatformViewFactory
+  private lateinit var messenger: BinaryMessenger
 
   override fun onAttachedToEngine(@NonNull flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
     // Store application context for later use
     applicationContext = flutterPluginBinding.applicationContext
+    
+    // Store messenger reference
+    messenger = flutterPluginBinding.binaryMessenger
 
-    // Create and store the view factory for later activity updates
-    viewFactory = YoloPlatformViewFactory()
+    // Create and store the view factory with messenger for later activity updates
+    viewFactory = YoloPlatformViewFactory(messenger)
     
     // Register platform view
     flutterPluginBinding.platformViewRegistry.registerViewFactory(

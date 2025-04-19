@@ -3,7 +3,11 @@ package com.ultralytics.yolo
 import android.content.Context
 import android.util.Log
 import android.view.View
+import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.platform.PlatformView
+import io.flutter.plugin.common.BinaryMessenger
+import android.os.Handler
+import android.os.Looper
 
 /**
  * YoloPlatformView - Flutterからのネイティブビューブリッジ
@@ -11,16 +15,24 @@ import io.flutter.plugin.platform.PlatformView
 class YoloPlatformView(
     private val context: Context,
     viewId: Int,
-    creationParams: Map<String?, Any?>?
+    creationParams: Map<String?, Any?>?,
+    private val messenger: BinaryMessenger
 ) : PlatformView {
 
     private val yoloView: YoloView = YoloView(context)
     private val TAG = "YoloPlatformView"
+    private val methodChannel: MethodChannel
     
     // 初期化フラグ
     private var initialized = false
     
     init {
+        // Create a unique channel for this view instance
+        methodChannel = MethodChannel(messenger, "com.ultralytics.yolo/YoloMethodChannel_$viewId")
+        
+        // Main thread handler
+        val mainHandler = Handler(Looper.getMainLooper())
+        
         // Parse model path and task from creation params
         val modelPath = creationParams?.get("modelPath") as? String ?: "yolo11n"
         val taskString = creationParams?.get("task") as? String ?: "detect"
@@ -47,10 +59,79 @@ class YoloPlatformView(
                 }
             }
             
-            // Set up callback for inference results if needed
+            // Set up callback for inference results
             yoloView.setOnInferenceCallback { result ->
-                // ログ出力のみ
                 Log.d(TAG, "Inference result received: ${result.boxes.size} detections")
+                
+                // Convert result to map for Flutter
+                val resultMap = HashMap<String, Any>()
+                
+                // Convert boxes to list of maps
+                resultMap["boxes"] = result.boxes.map { box ->
+                    mapOf(
+                        "x1" to box.xywh.left,
+                        "y1" to box.xywh.top,
+                        "x2" to box.xywh.right,
+                        "y2" to box.xywh.bottom,
+                        "class" to box.cls,
+                        "label" to box.cls,
+                        "confidence" to box.conf
+                    )
+                }
+                
+                // Add task-specific data
+                when (task) {
+                    YOLOTask.SEGMENT -> {
+                        // Handle segmentation masks if available
+                        result.masks?.let { masks ->
+                            resultMap["hasMasks"] = true
+                            // We don't send the actual bitmap data through the channel
+                            // Just a flag indicating masks are available
+                        }
+                    }
+                    YOLOTask.POSE -> {
+                        // Include pose keypoints if available
+                        if (result.keypointsList.isNotEmpty()) {
+                            resultMap["keypoints"] = result.keypointsList.map { keypoints ->
+                                mapOf(
+                                    "coordinates" to keypoints.xyn.mapIndexed { i, (x, y) ->
+                                        mapOf("x" to x, "y" to y, "confidence" to keypoints.conf[i])
+                                    }
+                                )
+                            }
+                        }
+                    }
+                    YOLOTask.CLASSIFY -> {
+                        // Include classification results if available
+                        result.probs?.let { probs ->
+                            resultMap["classification"] = mapOf(
+                                "topClass" to probs.top1,
+                                "topConfidence" to probs.top1Conf,
+                                "top5Classes" to probs.top5,
+                                "top5Confidences" to probs.top5Confs
+                            )
+                        }
+                    }
+                    YOLOTask.OBB -> {
+                        // Include oriented bounding boxes if available
+                        if (result.obb.isNotEmpty()) {
+                            resultMap["obb"] = result.obb.map { obb ->
+                                val poly = obb.box.toPolygon()
+                                mapOf(
+                                    "points" to poly.map { mapOf("x" to it.x, "y" to it.y) },
+                                    "class" to obb.cls,
+                                    "confidence" to obb.confidence
+                                )
+                            }
+                        }
+                    }
+                    else -> {} // DETECT is handled by boxes
+                }
+                
+                // Send result to Flutter
+                mainHandler.post {
+                    methodChannel.invokeMethod("onDetectionResult", resultMap)
+                }
             }
             
             // Load model with the specified path and task

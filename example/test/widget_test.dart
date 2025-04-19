@@ -6,10 +6,11 @@
 // tree, read text, and verify that the values of widget properties are correct.
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:yolo_example/main.dart';
+import 'package:ultralytics_yolo_example/main.dart';
 
 void main() {
-  testWidgets('Verify example app renders correctly', (WidgetTester tester) async {
+  testWidgets('Verify example app renders correctly',
+      (WidgetTester tester) async {
     // Build our app and trigger a frame
     await tester.pumpWidget(const YoloExampleApp());
 
@@ -18,7 +19,7 @@ void main() {
       find.text('YOLO Plugin Example'),
       findsOneWidget,
     );
-    
+
     // Verify that the main buttons are present
     expect(find.text('Camera Inference'), findsOneWidget);
     expect(find.text('Single Image Inference'), findsOneWidget);

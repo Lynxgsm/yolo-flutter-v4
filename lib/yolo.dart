@@ -1,13 +1,16 @@
 // lib/yolo.dart
 
 import 'dart:async';
+import 'dart:typed_data';
 import 'package:flutter/services.dart';
 import 'package:ultralytics_yolo/yolo_task.dart';
 import 'package:ultralytics_yolo/yolo_exceptions.dart';
+import 'package:ultralytics_yolo/yolo_result.dart';
 
 /// Exports all YOLO-related classes and enums
 export 'yolo_task.dart';
 export 'yolo_exceptions.dart';
+export 'yolo_result.dart';
 
 /// YOLO (You Only Look Once) is a class that provides machine learning inference
 /// capabilities for object detection, segmentation, classification, pose estimation,
@@ -22,7 +25,7 @@ export 'yolo_exceptions.dart';
 ///   modelPath: 'assets/models/yolo11n.tflite',
 ///   task: YOLOTask.detect,
 /// );
-/// 
+///
 /// await yolo.loadModel();
 /// final results = await yolo.predict(imageBytes);
 /// ```
@@ -32,7 +35,7 @@ class YOLO {
 
   /// Path to the YOLO model file. This should be a TFLite model file.
   final String modelPath;
-  
+
   /// The type of task this YOLO model will perform (detection, segmentation, etc.)
   final YOLOTask task;
 
@@ -59,7 +62,7 @@ class YOLO {
   ///   print('Failed to load model');
   /// }
   /// ```
-  /// 
+  ///
   /// @throws [ModelLoadingException] if the model file cannot be found
   /// @throws [PlatformException] if there's an issue with the platform-specific code
   Future<bool> loadModel() async {
@@ -75,7 +78,8 @@ class YOLO {
       } else if (e.code == 'INVALID_MODEL') {
         throw ModelLoadingException('Invalid model format: $modelPath');
       } else if (e.code == 'UNSUPPORTED_TASK') {
-        throw ModelLoadingException('Unsupported task type: ${task.name} for model: $modelPath');
+        throw ModelLoadingException(
+            'Unsupported task type: ${task.name} for model: $modelPath');
       } else {
         throw ModelLoadingException('Failed to load model: ${e.message}');
       }
@@ -86,30 +90,24 @@ class YOLO {
 
   /// Runs inference on a single image.
   ///
-  /// Takes raw image bytes as input and returns a map containing the inference results.
-  /// The structure of the returned map depends on the [task] type:
-  /// 
-  /// - For detection: Contains 'boxes' with class, confidence, and bounding box coordinates.
-  /// - For segmentation: Contains 'boxes' with class, confidence, bounding box coordinates, and mask data.
-  /// - For classification: Contains class and confidence information.
-  /// - For pose estimation: Contains keypoints information for detected poses.
-  /// - For OBB: Contains oriented bounding box coordinates.
+  /// Takes raw image bytes as input and returns inference results as a list of YOLOResult objects and
+  /// a map with additional data like annotated images.
   ///
   /// The model must be loaded with [loadModel] before calling this method.
   ///
   /// Example:
   /// ```dart
-  /// final results = await yolo.predict(imageBytes);
-  /// final boxes = results['boxes'] as List<Map<String, dynamic>>;
-  /// for (var box in boxes) {
-  ///   print('Class: ${box['class']}, Confidence: ${box['confidence']}');
+  /// final resultMap = await yolo.predict(imageBytes);
+  /// final yoloResults = resultMap['results'] as List<YOLOResult>;
+  /// for (var result in yoloResults) {
+  ///   print('Class: ${result.className}, Confidence: ${result.confidence}');
   /// }
   /// ```
   ///
-  /// Returns a map containing the inference results. If inference fails, throws an exception.
-  /// 
+  /// Returns a map containing the YOLOResult objects and additional data. If inference fails, throws an exception.
+  ///
   /// @param imageBytes The raw image data as a Uint8List
-  /// @return A map containing the inference results
+  /// @return A map containing the inference results with the YOLOResult objects under the 'results' key
   /// @throws [ModelNotLoadedException] if the model has not been loaded
   /// @throws [InferenceException] if there's an error during inference
   /// @throws [PlatformException] if there's an issue with the platform-specific code
@@ -117,48 +115,63 @@ class YOLO {
     if (imageBytes.isEmpty) {
       throw InvalidInputException('Image data is empty');
     }
-    
+
     try {
       final result = await _channel.invokeMethod('predictSingleImage', {
         'image': imageBytes,
       });
-      
+
       if (result is Map) {
         // Convert Map<Object?, Object?> to Map<String, dynamic>
-        Map<String, dynamic> resultMap = Map<String, dynamic>.fromEntries(
-          result.entries.map((e) => MapEntry(e.key.toString(), e.value))
-        );
-        
-        // Convert boxes list if it exists
-        if (resultMap.containsKey('boxes') && resultMap['boxes'] is List) {
-          List<Map<String, dynamic>> boxes = (resultMap['boxes'] as List).map((item) {
-            if (item is Map) {
-              return Map<String, dynamic>.fromEntries(
-                item.entries.map((e) => MapEntry(e.key.toString(), e.value))
-              );
-            }
-            return <String, dynamic>{};
-          }).toList();
-          
-          resultMap['boxes'] = boxes;
-        }
-        
+        final resultMap = Map<String, dynamic>.fromEntries(
+            result.entries.map((e) => MapEntry(e.key.toString(), e.value)));
+
+        // Process boxes to create a list of YOLOResult objects
+        resultMap['results'] = _processDetections(resultMap);
         return resultMap;
       }
-      
+
       throw InferenceException('Invalid result format returned from inference');
     } on PlatformException catch (e) {
-      if (e.code == 'MODEL_NOT_LOADED') {
-        throw ModelNotLoadedException('Model has not been loaded. Call loadModel() first.');
-      } else if (e.code == 'INVALID_IMAGE') {
-        throw InvalidInputException('Invalid image format or corrupted image data');
-      } else if (e.code == 'INFERENCE_ERROR') {
-        throw InferenceException('Error during inference: ${e.message}');
-      } else {
-        throw InferenceException('Platform error during inference: ${e.message}');
-      }
+      _handlePlatformException(e);
     } catch (e) {
       throw InferenceException('Unknown error during inference: $e');
+    }
+  }
+
+  // Process the detection results from the raw map
+  List<YOLOResult> _processDetections(Map<String, dynamic> resultMap) {
+    final results = <YOLOResult>[];
+
+    if (resultMap.containsKey('boxes') && resultMap['boxes'] is List) {
+      final boxes = resultMap['boxes'] as List;
+
+      for (var box in boxes) {
+        if (box is Map) {
+          // Convert each detection to a YOLOResult
+          final detectionMap = Map<String, dynamic>.fromEntries(
+              box.entries.map((e) => MapEntry(e.key.toString(), e.value)));
+
+          results.add(YOLOResult.fromMap(detectionMap));
+        }
+      }
+    }
+
+    return results;
+  }
+
+  // Handle platform exceptions with appropriate error messages
+  Never _handlePlatformException(PlatformException e) {
+    if (e.code == 'MODEL_NOT_LOADED') {
+      throw ModelNotLoadedException(
+          'Model has not been loaded. Call loadModel() first.');
+    } else if (e.code == 'INVALID_IMAGE') {
+      throw InvalidInputException(
+          'Invalid image format or corrupted image data');
+    } else if (e.code == 'INFERENCE_ERROR') {
+      throw InferenceException('Error during inference: ${e.message}');
+    } else {
+      throw InferenceException('Platform error during inference: ${e.message}');
     }
   }
 }

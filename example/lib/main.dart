@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:ultralytics_yolo/yolo.dart';
 import 'package:ultralytics_yolo/yolo_view.dart';
+import 'package:ultralytics_yolo/yolo_result.dart';
 import 'package:image_picker/image_picker.dart';
 
 void main() {
@@ -36,7 +37,8 @@ class HomeScreen extends StatelessWidget {
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => const CameraInferenceScreen()),
+                  MaterialPageRoute(
+                      builder: (context) => const CameraInferenceScreen()),
                 );
               },
               child: const Text('Camera Inference'),
@@ -46,7 +48,8 @@ class HomeScreen extends StatelessWidget {
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => const SingleImageScreen()),
+                  MaterialPageRoute(
+                      builder: (context) => const SingleImageScreen()),
                 );
               },
               child: const Text('Single Image Inference'),
@@ -77,9 +80,18 @@ class CameraInferenceScreen extends StatelessWidget {
           Expanded(
             child: Container(
               color: Colors.black12,
-              child: const YoloView(
+              child: YoloView(
                 modelPath: 'yolo11n.tflite',
                 task: YOLOTask.detect,
+                onResult: (results) {
+                  // Log number of detections
+                  debugPrint('Detected ${results.length} objects');
+
+                  // Log each detection
+                  for (var result in results) {
+                    debugPrint(result.toString());
+                  }
+                },
               ),
             ),
           ),
@@ -98,7 +110,7 @@ class SingleImageScreen extends StatefulWidget {
 
 class _SingleImageScreenState extends State<SingleImageScreen> {
   final _picker = ImagePicker();
-  List<Map<String, dynamic>> _detections = [];
+  List<YOLOResult> _results = [];
   Uint8List? _imageBytes;
   Uint8List? _annotatedImage;
 
@@ -120,23 +132,19 @@ class _SingleImageScreenState extends State<SingleImageScreen> {
     if (file == null) return;
 
     final bytes = await file.readAsBytes();
-    final result = await _yolo.predict(bytes);
+    final resultMap = await _yolo.predict(bytes);
     setState(() {
-      // Check if boxes exist and set them as detections
-      if (result.containsKey('boxes') && result['boxes'] is List) {
-        _detections = List<Map<String, dynamic>>.from(result['boxes']);
-      } else {
-        _detections = [];
-      }
-      
+      // Get the list of YOLOResult objects from the result map
+      _results = resultMap['results'] as List<YOLOResult>? ?? [];
+
       // Check if annotated image exists
-      if (result.containsKey('annotatedImage') && 
-          result['annotatedImage'] is Uint8List) {
-        _annotatedImage = result['annotatedImage'] as Uint8List;
+      if (resultMap.containsKey('annotatedImage') &&
+          resultMap['annotatedImage'] is Uint8List) {
+        _annotatedImage = resultMap['annotatedImage'] as Uint8List;
       } else {
         _annotatedImage = null;
       }
-      
+
       _imageBytes = bytes;
     });
   }
@@ -176,8 +184,17 @@ class _SingleImageScreenState extends State<SingleImageScreen> {
                       child: Image.memory(_imageBytes!),
                     ),
                   const SizedBox(height: 10),
-                  const Text('Detections:'),
-                  Text(_detections.toString()),
+                  Text('Detections: ${_results.length}'),
+                  ..._results.map((result) => Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: Text(
+                          'Class: ${result.className}\n'
+                          'Confidence: ${result.confidence.toStringAsFixed(2)}\n'
+                          'Bounding Box: ${result.boundingBox}\n'
+                          'Has Mask: ${result.mask != null}\n'
+                          'Has Keypoints: ${result.keypoints != null}',
+                        ),
+                      )),
                 ],
               ),
             ),
