@@ -17,8 +17,6 @@ class YoloViewController {
   ///
   /// Pass an empty list to show all classes.
   Future<void> setAllowedClasses(List<String> classes) async {
-    print(
-        'YoloViewController.setAllowedClasses: $classes, channel: $_methodChannel');
     if (_methodChannel != null) {
       try {
         await _methodChannel!.invokeMethod('setAllowedClasses', {
@@ -36,8 +34,6 @@ class YoloViewController {
   ///
   /// Value should be between 0.0 and 1.0
   Future<void> setMinConfidence(double confidence) async {
-    print(
-        'YoloViewController.setMinConfidence: $confidence, channel: $_methodChannel');
     if (_methodChannel != null) {
       try {
         await _methodChannel!.invokeMethod('setMinConfidence', {
@@ -55,7 +51,6 @@ class YoloViewController {
   ///
   /// This is useful if you need to manually trigger camera initialization
   Future<void> initCamera() async {
-    print('YoloViewController.initCamera, channel: $_methodChannel');
     if (_methodChannel != null) {
       try {
         await _methodChannel!.invokeMethod('initCamera');
@@ -69,12 +64,28 @@ class YoloViewController {
 
   /// Switch between front and back camera
   Future<void> switchCamera() async {
-    print('YoloViewController.switchCamera, channel: $_methodChannel');
     if (_methodChannel != null) {
       try {
         await _methodChannel!.invokeMethod('switchCamera');
       } catch (e) {
         print('Error switching camera: $e');
+      }
+    } else {
+      print('Warning: Method channel not initialized yet');
+    }
+  }
+
+  /// Set whether to show detection boxes
+  ///
+  /// This allows toggling detection box visibility at runtime
+  Future<void> setShowBoxes(bool show) async {
+    if (_methodChannel != null) {
+      try {
+        await _methodChannel!.invokeMethod('setShowBoxes', {
+          'show': show,
+        });
+      } catch (e) {
+        print('Error setting show boxes: $e');
       }
     } else {
       print('Warning: Method channel not initialized yet');
@@ -202,6 +213,16 @@ class YoloView extends StatefulWidget {
     }
   }
 
+  /// Set whether to show detection boxes
+  ///
+  /// This allows toggling detection box visibility at runtime
+  static Future<void> setShowBoxes(BuildContext context, bool show) async {
+    final state = context.findAncestorStateOfType<_YoloViewState>();
+    if (state != null) {
+      await state.setShowBoxes(show);
+    }
+  }
+
   @override
   State<YoloView> createState() => _YoloViewState();
 }
@@ -273,6 +294,19 @@ class _YoloViewState extends State<YoloView> {
       });
     } catch (e) {
       print('Error setting min confidence: $e');
+    }
+  }
+
+  /// Set whether to show detection boxes
+  ///
+  /// This allows toggling detection box visibility at runtime
+  Future<void> setShowBoxes(bool show) async {
+    try {
+      await _methodChannel.invokeMethod('setShowBoxes', {
+        'show': show,
+      });
+    } catch (e) {
+      print('Error setting show boxes: $e');
     }
   }
 

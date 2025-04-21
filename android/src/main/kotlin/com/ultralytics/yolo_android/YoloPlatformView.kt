@@ -72,6 +72,17 @@ class YoloPlatformView(
                         result.error("SWITCH_CAMERA_ERROR", e.message, null)
                     }
                 }
+                "setShowBoxes" -> {
+                    try {
+                        val show = call.argument<Boolean>("show") ?: true
+                        Log.d(TAG, "Setting show boxes: $show")
+                        yoloView.setShowBoxes(show)
+                        result.success(null)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error setting show boxes: ${e.message}", e)
+                        result.error("SET_SHOW_BOXES_ERROR", e.message, null)
+                    }
+                }
                 "getCameraInfo" -> {
                     try {
                         val width = yoloView.previewView.width
