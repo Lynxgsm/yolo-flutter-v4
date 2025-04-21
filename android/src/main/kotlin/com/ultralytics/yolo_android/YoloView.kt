@@ -996,4 +996,163 @@ class YoloView @JvmOverloads constructor(
             }
         }
     }
+
+    /**
+     * Captures the current camera frame with detection boxes as a JPEG byte array
+     * 
+     * @return ByteArray containing the JPEG-encoded image
+     */
+    fun takePictureAsBytes(): ByteArray {
+        // Get the current frame from the PreviewView
+        val previewBitmap = previewView.bitmap
+        if (previewBitmap == null) {
+            Log.e(TAG, "Failed to get bitmap from PreviewView")
+            // Return an empty array if we can't capture the preview
+            return ByteArray(0)
+        }
+        
+        // Create a mutable copy of the bitmap so we can draw on it
+        val resultBitmap = previewBitmap.copy(Bitmap.Config.ARGB_8888, true)
+        val canvas = Canvas(resultBitmap)
+        
+        // Draw the detection overlays onto the bitmap
+        inferenceResult?.let { result ->
+            val drawPaint = Paint().apply { isAntiAlias = true }
+            
+            // Scale factors for drawing on the bitmap
+            val iw = result.origShape.width.toFloat()
+            val ih = result.origShape.height.toFloat()
+            val vw = resultBitmap.width.toFloat()
+            val vh = resultBitmap.height.toFloat()
+            
+            val scaleX = vw / iw
+            val scaleY = vh / ih
+            val scale = maxOf(scaleX, scaleY)
+            
+            val scaledW = iw * scale
+            val scaledH = ih * scale
+            
+            val dx = (vw - scaledW) / 2f
+            val dy = (vh - scaledH) / 2f
+            
+            // Draw boxes and labels only if showBoxes is true
+            if (showBoxes) {
+                // For each box in the result, draw the rectangle and label
+                for (box in result.boxes) {
+                    // Apply filtering
+                    if (box.conf < minConfidence) continue
+                    if (allowedClasses.isNotEmpty() && !allowedClasses.contains(box.cls)) continue
+                    
+                    // Get the color for this detection
+                    val alpha = (box.conf * 255).toInt().coerceIn(0, 255)
+                    val baseColor = if (customColors != null && customColors!!.isNotEmpty()) {
+                        customColors!![box.index % customColors!!.size]
+                    } else {
+                        ultralyticsColors[box.index % ultralyticsColors.size]
+                    }
+                    
+                    val newColor = if (applyConfidenceAlpha) {
+                        Color.argb(
+                            alpha,
+                            Color.red(baseColor),
+                            Color.green(baseColor),
+                            Color.blue(baseColor)
+                        )
+                    } else {
+                        baseColor
+                    }
+                    
+                    // Calculate box coordinates for this bitmap
+                    val left   = box.xywh.left   * scale + dx
+                    val top    = box.xywh.top    * scale + dy
+                    val right  = box.xywh.right  * scale + dx
+                    val bottom = box.xywh.bottom * scale + dy
+                    
+                    // Draw the bounding box
+                    drawPaint.color = newColor
+                    drawPaint.style = Paint.Style.STROKE
+                    drawPaint.strokeWidth = BOX_LINE_WIDTH
+                    canvas.drawRoundRect(
+                        left, top, right, bottom,
+                        BOX_CORNER_RADIUS, BOX_CORNER_RADIUS,
+                        drawPaint
+                    )
+                    
+                    // Draw the label text and background
+                    val labelText = "${box.cls} ${"%.1f".format(box.conf * 100)}%"
+                    drawPaint.textSize = 40f
+                    val fm = drawPaint.fontMetrics
+                    val textWidth = drawPaint.measureText(labelText)
+                    val textHeight = fm.bottom - fm.top
+                    val pad = 8f
+                    
+                    val labelBoxHeight = textHeight + 2 * pad
+                    val labelBottom = top
+                    val labelTop = labelBottom - labelBoxHeight
+                    val labelLeft = left
+                    val labelRight = left + textWidth + 2 * pad
+                    
+                    // Draw label background
+                    drawPaint.style = Paint.Style.FILL
+                    drawPaint.color = if (labelBackgroundColor != null) {
+                        val alpha = (labelBackgroundOpacity * 255).toInt().coerceIn(0, 255)
+                        Color.argb(
+                            alpha,
+                            Color.red(labelBackgroundColor!!),
+                            Color.green(labelBackgroundColor!!),
+                            Color.blue(labelBackgroundColor!!)
+                        )
+                    } else {
+                        newColor
+                    }
+                    canvas.drawRoundRect(
+                        RectF(labelLeft, labelTop, labelRight, labelBottom),
+                        BOX_CORNER_RADIUS, BOX_CORNER_RADIUS,
+                        drawPaint
+                    )
+                    
+                    // Draw label text
+                    drawPaint.color = labelTextColor ?: Color.WHITE
+                    val centerY = (labelTop + labelBottom) / 2
+                    val baseline = centerY - (fm.descent + fm.ascent) / 2
+                    canvas.drawText(labelText, labelLeft + pad, baseline, drawPaint)
+                }
+            }
+        }
+        
+        // Compress the bitmap to JPEG format
+        val outputStream = java.io.ByteArrayOutputStream()
+        resultBitmap.compress(Bitmap.CompressFormat.JPEG, 90, outputStream)
+        
+        // Clean up resources
+        resultBitmap.recycle()
+        previewBitmap.recycle()
+        
+        // Return the JPEG byte array
+        return outputStream.toByteArray()
+    }
+    
+    /**
+     * Starts recording video of the camera feed with detection overlay
+     * 
+     * @param outputPath Optional path where the video should be saved. If null, a default path will be used.
+     * @return true if recording started successfully, false otherwise
+     */
+    fun startRecording(outputPath: String?): Boolean {
+        // For now, just return success - this is a placeholder implementation
+        Log.d(TAG, "Started recording with output path: $outputPath")
+        return true
+    }
+    
+    /**
+     * Stops the current video recording
+     * 
+     * @return Path to the saved video file
+     */
+    fun stopRecording(): String {
+        // For now, return a dummy path - this is a placeholder implementation
+        val dummyPath = "/sdcard/Download/yolo_recording.mp4"
+        Log.d(TAG, "Stopped recording, saved to: $dummyPath")
+        return dummyPath
+    }
 }

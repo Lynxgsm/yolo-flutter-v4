@@ -3,6 +3,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'dart:io';
+import 'dart:typed_data';
 import 'package:ultralytics_yolo_android/yolo_task.dart';
 import 'package:ultralytics_yolo_android/yolo_result.dart';
 
@@ -12,6 +14,7 @@ import 'package:ultralytics_yolo_android/yolo_result.dart';
 class YoloViewController {
   final GlobalKey<_YoloViewState> _key = GlobalKey<_YoloViewState>();
   MethodChannel? _methodChannel;
+  bool _isRecording = false;
 
   /// Set allowed classes for filtering detections
   ///
@@ -187,6 +190,124 @@ class YoloViewController {
     return <String, dynamic>{};
   }
 
+  /// Starts recording video while performing YOLO predictions.
+  ///
+  /// This method is only available on Android devices. On other platforms,
+  /// it throws a [PlatformNotSupportedException].
+  ///
+  /// [outputPath] is the file path where the video will be saved.
+  /// If not provided, a default path will be used.
+  ///
+  /// Returns true if recording started successfully, false otherwise.
+  ///
+  /// @throws [PlatformNotSupportedException] if called on non-Android platform
+  /// @throws [ModelNotLoadedException] if the model has not been loaded
+  /// @throws [RecordingException] if there's an error starting the recording
+  Future<bool> startRecording({String? outputPath}) async {
+    if (!Platform.isAndroid) {
+      throw PlatformNotSupportedException(
+          'Video recording is only supported on Android');
+    }
+
+    if (_isRecording) {
+      return true; // Already recording
+    }
+
+    if (_methodChannel != null) {
+      try {
+        final result = await _methodChannel!.invokeMethod('startRecording', {
+          'outputPath': outputPath,
+        });
+
+        _isRecording = result == true;
+        return _isRecording;
+      } on PlatformException catch (e) {
+        if (e.code == 'MODEL_NOT_LOADED') {
+          throw ModelNotLoadedException(
+              'Model has not been loaded. Call loadModel() first.');
+        } else if (e.code == 'CAMERA_PERMISSION_DENIED') {
+          throw RecordingException('Camera permission denied');
+        } else if (e.code == 'STORAGE_PERMISSION_DENIED') {
+          throw RecordingException('Storage permission denied');
+        } else {
+          throw RecordingException('Failed to start recording: ${e.message}');
+        }
+      } catch (e) {
+        throw RecordingException('Unknown error starting recording: $e');
+      }
+    } else {
+      print('Warning: Method channel not initialized yet');
+      return false;
+    }
+  }
+
+  /// Stops the current video recording session.
+  ///
+  /// This method is only available on Android devices. On other platforms,
+  /// it throws a [PlatformNotSupportedException].
+  ///
+  /// Returns the path to the saved video file.
+  ///
+  /// @throws [PlatformNotSupportedException] if called on non-Android platform
+  /// @throws [RecordingException] if there's an error stopping the recording
+  Future<String> stopRecording() async {
+    if (!Platform.isAndroid) {
+      throw PlatformNotSupportedException(
+          'Video recording is only supported on Android');
+    }
+
+    if (!_isRecording) {
+      throw RecordingException('No active recording to stop');
+    }
+
+    if (_methodChannel != null) {
+      try {
+        final result = await _methodChannel!.invokeMethod('stopRecording');
+        _isRecording = false;
+        return result as String;
+      } on PlatformException catch (e) {
+        throw RecordingException('Failed to stop recording: ${e.message}');
+      } catch (e) {
+        throw RecordingException('Unknown error stopping recording: $e');
+      }
+    } else {
+      throw RecordingException('Method channel not initialized');
+    }
+  }
+
+  /// Captures the current camera view as a byte array.
+  ///
+  /// This method takes a snapshot of what's currently displayed in the camera view,
+  /// including any detection boxes if they are enabled.
+  ///
+  /// Returns the image as a Uint8List containing the JPEG-encoded image data.
+  ///
+  /// @throws [PlatformNotSupportedException] if called on non-Android platform
+  /// @throws [CaptureException] if there's an error capturing the image
+  Future<Uint8List> takePictureAsBytes() async {
+    if (!Platform.isAndroid) {
+      throw PlatformNotSupportedException(
+          'Picture capture is only supported on Android');
+    }
+
+    if (_methodChannel != null) {
+      try {
+        final result = await _methodChannel!.invokeMethod('takePictureAsBytes');
+        if (result is Uint8List) {
+          return result;
+        } else {
+          throw CaptureException('Invalid return type from takePictureAsBytes');
+        }
+      } on PlatformException catch (e) {
+        throw CaptureException('Failed to capture picture: ${e.message}');
+      } catch (e) {
+        throw CaptureException('Unknown error capturing picture: $e');
+      }
+    } else {
+      throw CaptureException('Method channel not initialized');
+    }
+  }
+
   /// Internal key used by YoloView
   GlobalKey<_YoloViewState> get key => _key;
 
@@ -195,6 +316,42 @@ class YoloViewController {
     _methodChannel = channel;
     print('YoloViewController: Method channel set to $_methodChannel');
   }
+}
+
+/// Exception thrown when recording video fails
+class RecordingException implements Exception {
+  final String message;
+  RecordingException(this.message);
+
+  @override
+  String toString() => 'RecordingException: $message';
+}
+
+/// Exception thrown when a feature is not supported on the current platform
+class PlatformNotSupportedException implements Exception {
+  final String message;
+  PlatformNotSupportedException(this.message);
+
+  @override
+  String toString() => 'PlatformNotSupportedException: $message';
+}
+
+/// Exception thrown when a model is not loaded
+class ModelNotLoadedException implements Exception {
+  final String message;
+  ModelNotLoadedException(this.message);
+
+  @override
+  String toString() => 'ModelNotLoadedException: $message';
+}
+
+/// Exception thrown when capturing a picture fails
+class CaptureException implements Exception {
+  final String message;
+  CaptureException(this.message);
+
+  @override
+  String toString() => 'CaptureException: $message';
 }
 
 /// A Flutter widget that displays a platform view for YOLO object detection.

@@ -40,9 +40,6 @@ class YOLO {
   /// The type of task this YOLO model will perform (detection, segmentation, etc.)
   final YOLOTask task;
 
-  /// Flag indicating if recording is currently active
-  bool _isRecording = false;
-
   /// Creates a new YOLO instance with the specified model path and task.
   ///
   /// The [modelPath] should point to a valid TFLite model file.
@@ -178,98 +175,4 @@ class YOLO {
       throw InferenceException('Platform error during inference: ${e.message}');
     }
   }
-
-  /// Starts recording video while performing YOLO predictions.
-  ///
-  /// This method is only available on Android devices. On other platforms,
-  /// it throws a [PlatformNotSupportedException].
-  ///
-  /// [outputPath] is the file path where the video will be saved.
-  /// If not provided, a default path will be used.
-  ///
-  /// Returns true if recording started successfully, false otherwise.
-  ///
-  /// @throws [PlatformNotSupportedException] if called on non-Android platform
-  /// @throws [ModelNotLoadedException] if the model has not been loaded
-  /// @throws [RecordingException] if there's an error starting the recording
-  Future<bool> startRecording({String? outputPath}) async {
-    if (!Platform.isAndroid) {
-      throw PlatformNotSupportedException(
-          'Video recording is only supported on Android');
-    }
-
-    if (_isRecording) {
-      return true; // Already recording
-    }
-
-    try {
-      final result = await _channel.invokeMethod('startRecording', {
-        'outputPath': outputPath,
-      });
-
-      _isRecording = result == true;
-      return _isRecording;
-    } on PlatformException catch (e) {
-      if (e.code == 'MODEL_NOT_LOADED') {
-        throw ModelNotLoadedException(
-            'Model has not been loaded. Call loadModel() first.');
-      } else if (e.code == 'CAMERA_PERMISSION_DENIED') {
-        throw RecordingException('Camera permission denied');
-      } else if (e.code == 'STORAGE_PERMISSION_DENIED') {
-        throw RecordingException('Storage permission denied');
-      } else {
-        throw RecordingException('Failed to start recording: ${e.message}');
-      }
-    } catch (e) {
-      throw RecordingException('Unknown error starting recording: $e');
-    }
-  }
-
-  /// Stops the current video recording session.
-  ///
-  /// This method is only available on Android devices. On other platforms,
-  /// it throws a [PlatformNotSupportedException].
-  ///
-  /// Returns the path to the saved video file.
-  ///
-  /// @throws [PlatformNotSupportedException] if called on non-Android platform
-  /// @throws [RecordingException] if there's an error stopping the recording
-  Future<String> stopRecording() async {
-    if (!Platform.isAndroid) {
-      throw PlatformNotSupportedException(
-          'Video recording is only supported on Android');
-    }
-
-    if (!_isRecording) {
-      throw RecordingException('No active recording to stop');
-    }
-
-    try {
-      final result = await _channel.invokeMethod('stopRecording');
-      _isRecording = false;
-      return result as String;
-    } on PlatformException catch (e) {
-      throw RecordingException('Failed to stop recording: ${e.message}');
-    } catch (e) {
-      throw RecordingException('Unknown error stopping recording: $e');
-    }
-  }
-}
-
-/// Exception thrown when recording video fails
-class RecordingException implements Exception {
-  final String message;
-  RecordingException(this.message);
-
-  @override
-  String toString() => 'RecordingException: $message';
-}
-
-/// Exception thrown when a feature is not supported on the current platform
-class PlatformNotSupportedException implements Exception {
-  final String message;
-  PlatformNotSupportedException(this.message);
-
-  @override
-  String toString() => 'PlatformNotSupportedException: $message';
 }

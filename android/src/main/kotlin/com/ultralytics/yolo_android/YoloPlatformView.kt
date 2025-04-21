@@ -161,6 +161,37 @@ class YoloPlatformView(
                         result.error("GET_CAMERA_INFO_ERROR", e.message, null)
                     }
                 }
+                "takePictureAsBytes" -> {
+                    try {
+                        Log.d(TAG, "Taking picture as bytes")
+                        val imageBytes = yoloView.takePictureAsBytes()
+                        result.success(imageBytes)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error taking picture: ${e.message}", e)
+                        result.error("TAKE_PICTURE_ERROR", e.message, null)
+                    }
+                }
+                "startRecording" -> {
+                    try {
+                        val outputPath = call.argument<String>("outputPath")
+                        Log.d(TAG, "Starting recording with output path: $outputPath")
+                        val success = yoloView.startRecording(outputPath)
+                        result.success(success)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error starting recording: ${e.message}", e)
+                        result.error("START_RECORDING_ERROR", e.message, null)
+                    }
+                }
+                "stopRecording" -> {
+                    try {
+                        Log.d(TAG, "Stopping recording")
+                        val videoPath = yoloView.stopRecording()
+                        result.success(videoPath)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error stopping recording: ${e.message}", e)
+                        result.error("STOP_RECORDING_ERROR", e.message, null)
+                    }
+                }
                 else -> {
                     result.notImplemented()
                 }
