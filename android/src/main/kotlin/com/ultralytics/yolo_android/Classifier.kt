@@ -114,7 +114,7 @@ class Classifier(
         val outputShape = interpreter.getOutputTensor(0).shape()
         // 例えば outputShape = [1, 1000]
         numClass = outputShape[1]
-        Log.d(TAG, "Model output shape = [1, $numClass]")
+        // Log.d(TAG, "Model output shape = [1, $numClass]")
 
         // ===== 画像前処理パイプラインの用意 =====
         // For camera feed (with rotation)

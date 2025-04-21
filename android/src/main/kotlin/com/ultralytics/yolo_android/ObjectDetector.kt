@@ -147,7 +147,7 @@ class ObjectDetector(
         val outputShape = interpreter.getOutputTensor(0).shape()
         out1 = outputShape[1] // 84
         out2 = outputShape[2] // 2100
-        Log.d("TAG", "Model output shape = [1, $out1, $out2]")
+        // Log.d("TAG", "Model output shape = [1, $out1, $out2]")
 
         // 前処理用リソースの確保
         initPreprocessingResources(inWidth, inHeight)
@@ -231,7 +231,7 @@ class ObjectDetector(
         val outHeight = rawOutput[0].size      // out1
         val outWidth = rawOutput[0][0].size      // out2
         val shape = interpreter.getOutputTensor(0).shape() // 例: [1, 84, 8400]
-        Log.d("TFLite", "Output shape: " + shape.contentToString())
+        // Log.d("TFLite", "Output shape: " + shape.contentToString())
 
 //        // 出力の転置（[1][c][w] → [w][c]）
 //        for (i in 0 until outHeight) {
