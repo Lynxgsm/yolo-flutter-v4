@@ -168,7 +168,8 @@ class YoloView @JvmOverloads constructor(
      */
     fun setShowBoxes(show: Boolean) {
         this.showBoxes = show
-        // No need to update overlay visibility as drawing happens in Flutter
+        // Update overlay visibility immediately
+        overlayView.visibility = if (show) View.VISIBLE else View.INVISIBLE
     }
 
     init {
@@ -192,20 +193,18 @@ class YoloView @JvmOverloads constructor(
         // 3) Add that container
         addView(previewContainer)
 
-        // 4) Add the overlay on top but make it invisible by default
-        // since drawing will be done in Flutter
+        // 4) Add the overlay on top
         addView(overlayView, LayoutParams(
             LayoutParams.MATCH_PARENT,
             LayoutParams.MATCH_PARENT
         ))
-        overlayView.visibility = View.INVISIBLE
 
         // Ensure overlay is visually above the preview container
         overlayView.elevation = 100f
         overlayView.translationZ = 100f
         previewContainer.elevation = 1f
 
-        Log.d(TAG, "YoloView init: forced TextureView usage for camera preview + overlay disabled for Flutter drawing.")
+        Log.d(TAG, "YoloView init: forced TextureView usage for camera preview + overlay on top.")
     }
 
     // region threshold setters
@@ -377,7 +376,7 @@ class YoloView @JvmOverloads constructor(
     private fun onFrame(imageProxy: ImageProxy) {
         val w = imageProxy.width
         val h = imageProxy.height
-        Log.d(TAG, "Processing frame: ${w}x${h}")
+        // Log.d(TAG, "Processing frame: ${w}x${h}")
 
         val bitmap = ImageUtils.toBitmap(imageProxy) ?: run {
             Log.e(TAG, "Failed to convert ImageProxy to Bitmap")
@@ -428,7 +427,7 @@ class YoloView @JvmOverloads constructor(
 
             setWillNotDraw(false)
 
-            Log.d(TAG, "OverlayView initialized with enhanced Z-order + hardware acceleration")
+            // Log.d(TAG, "OverlayView initialized with enhanced Z-order + hardware acceleration")
         }
 
         override fun onDraw(canvas: Canvas) {
@@ -443,7 +442,7 @@ class YoloView @JvmOverloads constructor(
             val vw = width.toFloat()
             val vh = height.toFloat()
             
-            Log.d(TAG, "OverlayView dimensions: View(${vw}x${vh}), Image(${iw}x${ih})")
+            // Log.d(TAG, "OverlayView dimensions: View(${vw}x${vh}), Image(${iw}x${ih})")
 
             // カメラ画像 → View への拡大倍率
             val scaleX = vw / iw
@@ -456,7 +455,7 @@ class YoloView @JvmOverloads constructor(
             val dx = (vw - scaledW) / 2f
             val dy = (vh - scaledH) / 2f
             
-            Log.d(TAG, "OverlayView scaling: scale=${scale}, dx=${dx}, dy=${dy}")
+            // Log.d(TAG, "OverlayView scaling: scale=${scale}, dx=${dx}, dy=${dy}")
 
             when (task) {
                 // ----------------------------------------
@@ -465,11 +464,14 @@ class YoloView @JvmOverloads constructor(
                 YOLOTask.DETECT -> {
                     // Log.d(TAG, "Drawing DETECT boxes: ${result.boxes.size}")
                     for (box in result.boxes) {
-                        // Always use white color with alpha based on confidence
+                        // confidence に応じてアルファ調整
                         val alpha = (box.conf * 255).toInt().coerceIn(0, 255)
+                        val baseColor = ultralyticsColors[box.index % ultralyticsColors.size]
                         val newColor = Color.argb(
                             alpha,
-                            255, 255, 255
+                            Color.red(baseColor),
+                            Color.green(baseColor),
+                            Color.blue(baseColor)
                         )
 
                         // 元のbox.xywhの値をログ出力
@@ -535,9 +537,12 @@ class YoloView @JvmOverloads constructor(
                     // バウンディングボックス & ラベル
                     for (box in result.boxes) {
                         val alpha = (box.conf * 255).toInt().coerceIn(0, 255)
+                        val baseColor = ultralyticsColors[box.index % ultralyticsColors.size]
                         val newColor = Color.argb(
                             alpha,
-                            255, 255, 255
+                            Color.red(baseColor),
+                            Color.green(baseColor),
+                            Color.blue(baseColor)
                         )
 
                         // バウンディングボックス描画
@@ -594,9 +599,13 @@ class YoloView @JvmOverloads constructor(
                 YOLOTask.CLASSIFY -> {
                     result.probs?.let { probs ->
                         val alpha = (probs.top1Conf * 255).toInt().coerceIn(0, 255)
+                        // top1Index で色を選択
+                        val baseColor = ultralyticsColors[probs.top1Index % ultralyticsColors.size]
                         val newColor = Color.argb(
                             alpha,
-                            255, 255, 255
+                            Color.red(baseColor),
+                            Color.green(baseColor),
+                            Color.blue(baseColor)
                         )
 
                         val labelText = "${probs.top1} ${"%.1f".format(probs.top1Conf * 100)}%"
@@ -632,9 +641,12 @@ class YoloView @JvmOverloads constructor(
                     // バウンディングボックス
                     for (box in result.boxes) {
                         val alpha = (box.conf * 255).toInt().coerceIn(0, 255)
+                        val baseColor = ultralyticsColors[box.index % ultralyticsColors.size]
                         val newColor = Color.argb(
                             alpha,
-                            255, 255, 255
+                            Color.red(baseColor),
+                            Color.green(baseColor),
+                            Color.blue(baseColor)
                         )
 
                         val left   = box.xywh.left   * scale + dx
@@ -664,8 +676,14 @@ class YoloView @JvmOverloads constructor(
                                 val px = pxCam * scale + dx
                                 val py = pyCam * scale + dy
 
-                                // Use white for keypoints
-                                paint.color = Color.WHITE
+                                val colorIdx = if (i < kptColorIndices.size) kptColorIndices[i] else 0
+                                val rgbArray = posePalette[colorIdx % posePalette.size]
+                                paint.color = Color.argb(
+                                    255,
+                                    rgbArray[0].toInt().coerceIn(0,255),
+                                    rgbArray[1].toInt().coerceIn(0,255),
+                                    rgbArray[2].toInt().coerceIn(0,255)
+                                )
                                 paint.style = Paint.Style.FILL
                                 canvas.drawCircle(px, py, 8f, paint)
 
@@ -676,13 +694,20 @@ class YoloView @JvmOverloads constructor(
                         // スケルトン接続
                         paint.style = Paint.Style.STROKE
                         paint.strokeWidth = KEYPOINT_LINE_WIDTH
-                        paint.color = Color.WHITE  // Use white for skeleton lines
                         for ((idx, bone) in skeleton.withIndex()) {
                             val i1 = bone[0] - 1  // 1-indexed to 0-indexed
                             val i2 = bone[1] - 1
                             val p1 = points.getOrNull(i1)
                             val p2 = points.getOrNull(i2)
                             if (p1 != null && p2 != null) {
+                                val limbColorIdx = if (idx < limbColorIndices.size) limbColorIndices[idx] else 0
+                                val rgbArray = posePalette[limbColorIdx % posePalette.size]
+                                paint.color = Color.argb(
+                                    255,
+                                    rgbArray[0].toInt().coerceIn(0,255),
+                                    rgbArray[1].toInt().coerceIn(0,255),
+                                    rgbArray[2].toInt().coerceIn(0,255)
+                                )
                                 canvas.drawLine(p1.x, p1.y, p2.x, p2.y, paint)
                             }
                         }
@@ -694,9 +719,12 @@ class YoloView @JvmOverloads constructor(
                 YOLOTask.OBB -> {
                     for (obbRes in result.obb) {
                         val alpha = (obbRes.confidence * 255).toInt().coerceIn(0, 255)
+                        val baseColor = ultralyticsColors[obbRes.index % ultralyticsColors.size]
                         val newColor = Color.argb(
                             alpha,
-                            255, 255, 255
+                            Color.red(baseColor),
+                            Color.green(baseColor),
+                            Color.blue(baseColor)
                         )
 
                         paint.color = newColor
