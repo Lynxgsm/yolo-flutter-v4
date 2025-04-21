@@ -51,6 +51,61 @@ class YoloViewController {
     }
   }
 
+  /// Initialize the camera if it hasn't been initialized yet
+  ///
+  /// This is useful if you need to manually trigger camera initialization
+  Future<void> initCamera() async {
+    print('YoloViewController.initCamera, channel: $_methodChannel');
+    if (_methodChannel != null) {
+      try {
+        await _methodChannel!.invokeMethod('initCamera');
+      } catch (e) {
+        print('Error initializing camera: $e');
+      }
+    } else {
+      print('Warning: Method channel not initialized yet');
+    }
+  }
+
+  /// Switch between front and back camera
+  Future<void> switchCamera() async {
+    print('YoloViewController.switchCamera, channel: $_methodChannel');
+    if (_methodChannel != null) {
+      try {
+        await _methodChannel!.invokeMethod('switchCamera');
+      } catch (e) {
+        print('Error switching camera: $e');
+      }
+    } else {
+      print('Warning: Method channel not initialized yet');
+    }
+  }
+
+  /// Get current camera information asynchronously
+  ///
+  /// Returns a map with camera details such as:
+  /// - width: The width of the camera preview
+  /// - height: The height of the camera preview
+  /// - facing: "front" or "back" indicating which camera is active
+  ///
+  /// Returns an empty map if the camera information is not available.
+  Future<Map<String, dynamic>> getCameraInfo() async {
+    print('YoloViewController.getCameraInfo, channel: $_methodChannel');
+    if (_methodChannel != null) {
+      try {
+        final result = await _methodChannel!.invokeMethod('getCameraInfo');
+        if (result != null && result is Map) {
+          return Map<String, dynamic>.from(result);
+        }
+      } catch (e) {
+        print('Error getting camera info: $e');
+      }
+    } else {
+      print('Warning: Method channel not initialized yet');
+    }
+    return <String, dynamic>{};
+  }
+
   /// Internal key used by YoloView
   GlobalKey<_YoloViewState> get key => _key;
 
@@ -101,6 +156,13 @@ class YoloView extends StatefulWidget {
   /// The [onResult] is a callback function that will be called when the inference results are available.
   final Function(List<YOLOResult>) onResult;
 
+  /// Optional callback that is invoked when the camera is initialized and ready.
+  /// The camera info map contains camera details such as:
+  /// - width: The width of the camera preview
+  /// - height: The height of the camera preview
+  /// - facing: "front" or "back" indicating which camera is active
+  final Function(Map<String, dynamic> cameraInfo)? onCameraCreated;
+
   /// Whether to display detection boxes in the view.
   final bool showBoxes;
 
@@ -115,6 +177,7 @@ class YoloView extends StatefulWidget {
     required this.onResult,
     this.showBoxes = true,
     this.controller,
+    this.onCameraCreated,
   });
 
   /// Set allowed classes for filtering detections
@@ -157,12 +220,27 @@ class _YoloViewState extends State<YoloView> {
 
   // Handle incoming method calls from the native side
   Future<dynamic> _handleMethodCall(MethodCall call) async {
+    print(
+        'YoloView received method call: ${call.method}, args: ${call.arguments}');
     switch (call.method) {
       case 'onDetectionResult':
         // Convert results to a list of YOLOResult objects and call the callback
         final resultMap = Map<String, dynamic>.from(call.arguments);
         final results = _extractDetections(resultMap);
         widget.onResult(results);
+        return null;
+      case 'onCameraCreated':
+        print(
+            'Camera created and ready, calling onCameraCreated with: ${call.arguments}');
+        if (widget.onCameraCreated != null) {
+          final cameraInfo = call.arguments != null
+              ? Map<String, dynamic>.from(call.arguments)
+              : <String, dynamic>{};
+          widget.onCameraCreated!(cameraInfo);
+          print('onCameraCreated callback executed');
+        } else {
+          print('onCameraCreated callback is null');
+        }
         return null;
       default:
         return null;
@@ -253,17 +331,26 @@ class _YoloViewState extends State<YoloView> {
 
   // Called when the platform view is created
   void _onPlatformViewCreated(int id) {
+    print('YoloView: Platform view created with ID $id');
+
     // Update the method channel with the unique id
     final channelName = 'com.ultralytics.yolo_android/YoloMethodChannel_$id';
+    print('Setting up method channel: $channelName');
+
+    // Dispose of the previous method channel handler if any
+    _methodChannel.setMethodCallHandler(null);
+
+    // Create the new method channel with the correct ID
     _methodChannel = MethodChannel(channelName);
+
+    // Set up the method call handler
     _methodChannel.setMethodCallHandler(_handleMethodCall);
+    print('Method call handler registered for channel: $_methodChannel');
 
     // If a controller was provided, update its method channel
     if (widget.controller != null) {
       widget.controller!._setMethodChannel(_methodChannel);
+      print('Controller method channel updated: $_methodChannel');
     }
-
-    print(
-        'YoloView: Platform view created with ID $id, channel: $_methodChannel');
   }
 }

@@ -8,6 +8,7 @@ import io.flutter.plugin.platform.PlatformView
 import io.flutter.plugin.common.BinaryMessenger
 import android.os.Handler
 import android.os.Looper
+import androidx.camera.core.CameraSelector
 
 /**
  * YoloPlatformView - Flutterからのネイティブビューブリッジ
@@ -53,6 +54,40 @@ class YoloPlatformView(
                         result.error("SET_MIN_CONFIDENCE_ERROR", e.message, null)
                     }
                 }
+                "initCamera" -> {
+                    try {
+                        yoloView.initCamera()
+                        result.success(null)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error initializing camera: ${e.message}", e)
+                        result.error("INIT_CAMERA_ERROR", e.message, null)
+                    }
+                }
+                "switchCamera" -> {
+                    try {
+                        yoloView.switchCamera()
+                        result.success(null)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error switching camera: ${e.message}", e)
+                        result.error("SWITCH_CAMERA_ERROR", e.message, null)
+                    }
+                }
+                "getCameraInfo" -> {
+                    try {
+                        val width = yoloView.previewView.width
+                        val height = yoloView.previewView.height
+                        val facing = yoloView.getCurrentFacing()
+                        val cameraInfo = mapOf(
+                            "width" to width,
+                            "height" to height,
+                            "facing" to if (facing == CameraSelector.LENS_FACING_FRONT) "front" else "back"
+                        )
+                        result.success(cameraInfo)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error getting camera info: ${e.message}", e)
+                        result.error("GET_CAMERA_INFO_ERROR", e.message, null)
+                    }
+                }
                 else -> {
                     result.notImplemented()
                 }
@@ -92,6 +127,21 @@ class YoloPlatformView(
             
             // Set whether to show detection boxes
             yoloView.setShowBoxes(showBoxes)
+            
+            // Set up callback for camera creation
+            yoloView.setOnCameraCreatedCallback { width, height, facing ->
+                Log.d(TAG, "⭐️ Camera created callback received: ${width}x${height}, facing: $facing")
+                val cameraInfo = mapOf(
+                    "width" to width,
+                    "height" to height,
+                    "facing" to if (facing == CameraSelector.LENS_FACING_FRONT) "front" else "back"
+                )
+                Log.d(TAG, "⭐️ Sending onCameraCreated event to Flutter with data: $cameraInfo")
+                mainHandler.post {
+                    methodChannel.invokeMethod("onCameraCreated", cameraInfo)
+                    Log.d(TAG, "⭐️ onCameraCreated method invoked on channel: $methodChannel")
+                }
+            }
             
             // Set up callback for inference results
             yoloView.setOnInferenceCallback { result ->

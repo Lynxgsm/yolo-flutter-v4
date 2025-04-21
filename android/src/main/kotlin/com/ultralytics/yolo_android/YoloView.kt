@@ -136,8 +136,16 @@ class YoloView @JvmOverloads constructor(
         this.modelLoadCallback = callback
     }
 
+    // ★ カメラ初期化完了を通知するためのコールバック
+    private var cameraCreatedCallback: ((Int, Int, Int) -> Unit)? = null
+
+    /** カメラ初期化完了コールバックをセット (width, height, facing) */
+    fun setOnCameraCreatedCallback(callback: (Int, Int, Int) -> Unit) {
+        this.cameraCreatedCallback = callback
+    }
+
     // Use a PreviewView, forcing a TextureView under the hood
-    private val previewView: PreviewView = PreviewView(context).apply {
+    internal val previewView: PreviewView = PreviewView(context).apply {
         // Force TextureView usage so the overlay can be on top
         implementationMode = PreviewView.ImplementationMode.COMPATIBLE
         scaleType = PreviewView.ScaleType.FILL_CENTER
@@ -368,6 +376,15 @@ class YoloView @JvmOverloads constructor(
                         Log.d(TAG, "Setting surface provider to previewView")
                         preview.setSurfaceProvider(previewView.surfaceProvider)
                         Log.d(TAG, "Camera setup completed successfully")
+
+                        // Add a small delay to ensure the preview view has been measured
+                        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                            val width = previewView.width
+                            val height = previewView.height
+                            Log.d(TAG, "⭐️ About to send camera created callback: ${width}x${height}, facing: $lensFacing")
+                            cameraCreatedCallback?.invoke(width, height, lensFacing)
+                            Log.d(TAG, "⭐️ Camera created callback invoked with dimensions: ${width}x${height}")
+                        }, 300) // Small delay to ensure the view is measured
                     } catch (e: Exception) {
                         Log.e(TAG, "Use case binding failed", e)
                     }
@@ -387,6 +404,13 @@ class YoloView @JvmOverloads constructor(
             CameraSelector.LENS_FACING_BACK
         }
         startCamera()
+    }
+
+    /**
+     * Get the current camera facing
+     */
+    fun getCurrentFacing(): Int {
+        return lensFacing
     }
 
     // endregion
