@@ -5,10 +5,10 @@
 class YoloException implements Exception {
   /// A human-readable error message
   final String message;
-  
+
   /// Creates a new YoloException with the given error message
   YoloException(this.message);
-  
+
   @override
   String toString() => 'YoloException: $message';
 }
@@ -19,7 +19,7 @@ class YoloException implements Exception {
 /// is in an invalid format, or is otherwise incompatible.
 class ModelLoadingException extends YoloException {
   ModelLoadingException(super.message);
-  
+
   @override
   String toString() => 'ModelLoadingException: $message';
 }
@@ -30,7 +30,7 @@ class ModelLoadingException extends YoloException {
 /// or was not loaded successfully.
 class ModelNotLoadedException extends YoloException {
   ModelNotLoadedException(super.message);
-  
+
   @override
   String toString() => 'ModelNotLoadedException: $message';
 }
@@ -41,7 +41,7 @@ class ModelNotLoadedException extends YoloException {
 /// corrupted, or in an unsupported format.
 class InvalidInputException extends YoloException {
   InvalidInputException(super.message);
-  
+
   @override
   String toString() => 'InvalidInputException: $message';
 }
@@ -52,7 +52,31 @@ class InvalidInputException extends YoloException {
 /// during the inference process.
 class InferenceException extends YoloException {
   InferenceException(super.message);
-  
+
   @override
   String toString() => 'InferenceException: $message';
+}
+
+/// Exception thrown when an error occurs during video recording.
+///
+/// This exception is thrown by [YOLO.startRecording] or [YOLO.stopRecording]
+/// when there's an issue with the recording process, such as missing permissions
+/// or hardware problems.
+class RecordingException extends YoloException {
+  RecordingException(super.message);
+
+  @override
+  String toString() => 'RecordingException: $message';
+}
+
+/// Exception thrown when a feature is not supported on the current platform.
+///
+/// This exception is thrown when attempting to use platform-specific features
+/// on unsupported platforms. For example, when trying to use video recording
+/// on platforms other than Android.
+class PlatformNotSupportedException extends YoloException {
+  PlatformNotSupportedException(super.message);
+
+  @override
+  String toString() => 'PlatformNotSupportedException: $message';
 }

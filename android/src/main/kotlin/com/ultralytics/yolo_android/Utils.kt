@@ -1,4 +1,4 @@
-package com.ultralytics.yolo
+package com.ultralytics.yolo_android
 
 import android.graphics.Color
 

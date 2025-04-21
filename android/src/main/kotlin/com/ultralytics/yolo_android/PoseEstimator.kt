@@ -1,4 +1,4 @@
-package com.ultralytics.yolo
+package com.ultralytics.yolo_android
 
 import android.content.Context
 import android.graphics.*
@@ -101,7 +101,7 @@ class PoseEstimator(
         val inputShape = interpreter.getInputTensor(0).shape()
         val inHeight = inputShape[1]
         val inWidth = inputShape[2]
-        inputSize = com.ultralytics.yolo.Size(inWidth, inHeight)
+        inputSize = com.ultralytics.yolo_android.Size(inWidth, inHeight)
         modelInputSize = Pair(inWidth, inHeight)
 
         // (4) ImageProcessorの初期化 - both with and without rotation
@@ -177,7 +177,7 @@ class PoseEstimator(
         val fpsDouble: Double = if (t4 > 0) (1.0 / t4) else 0.0
         // YOLOResultに詰めて返す
         return YOLOResult(
-            origShape = com.ultralytics.yolo.Size(bitmap.height, bitmap.width),
+            origShape = com.ultralytics.yolo_android.Size(bitmap.height, bitmap.width),
             boxes = boxes,
             keypointsList = keypointsList,
 //            annotatedImage = annotatedImage,

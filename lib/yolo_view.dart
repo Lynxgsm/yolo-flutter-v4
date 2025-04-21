@@ -3,8 +3,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:ultralytics_yolo/yolo_task.dart';
-import 'package:ultralytics_yolo/yolo_result.dart';
+import 'package:ultralytics_yolo_android/yolo_task.dart';
+import 'package:ultralytics_yolo_android/yolo_result.dart';
 
 /// A Flutter widget that displays a platform view for YOLO object detection.
 ///
@@ -61,7 +61,7 @@ class _YoloViewState extends State<YoloView> {
     super.initState();
     // Initialize the method channel for communication with the native code
     _methodChannel =
-        const MethodChannel('com.ultralytics.yolo/YoloMethodChannel');
+        const MethodChannel('com.ultralytics.yolo_android/YoloMethodChannel');
     _methodChannel.setMethodCallHandler(_handleMethodCall);
   }
 
@@ -101,7 +101,7 @@ class _YoloViewState extends State<YoloView> {
 
   @override
   Widget build(BuildContext context) {
-    const viewType = 'com.ultralytics.yolo/YoloPlatformView';
+    const viewType = 'com.ultralytics.yolo_android/YoloPlatformView';
     final creationParams = <String, dynamic>{
       'modelPath': widget.modelPath,
       'task': widget.task.name,
@@ -133,7 +133,7 @@ class _YoloViewState extends State<YoloView> {
   // Called when the platform view is created
   void _onPlatformViewCreated(int id) {
     // Update the method channel with the unique id
-    final channelName = 'com.ultralytics.yolo/YoloMethodChannel_$id';
+    final channelName = 'com.ultralytics.yolo_android/YoloMethodChannel_$id';
     _methodChannel = MethodChannel(channelName);
     _methodChannel.setMethodCallHandler(_handleMethodCall);
   }

@@ -1,5 +1,5 @@
-name: ultralytics_yolo
-description: "Flutter plugin for YOLO (You Only Look Once) models, supporting object detection, segmentation, classification, pose estimation and oriented bounding boxes (OBB) on both Android and iOS."
+name: ultralytics_yolo_android
+description: 'Flutter plugin for YOLO (You Only Look Once) models, supporting object detection, segmentation, classification, pose estimation and oriented bounding boxes (OBB) on both Android and iOS.'
 version: 0.0.4
 homepage: https://github.com/ultralytics/yolo-flutter-app
 repository: https://github.com/ultralytics/yolo-flutter-app
@@ -38,7 +38,7 @@ flutter:
   plugin:
     platforms:
       android:
-        package: com.ultralytics.yolo
+        package: com.ultralytics.yolo_android
         pluginClass: YoloPlugin
       ios:
         pluginClass: YoloPlugin

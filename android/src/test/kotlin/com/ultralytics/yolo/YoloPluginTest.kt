@@ -1,4 +1,4 @@
-package com.ultralytics.yolo
+package com.ultralytics.yolo_android
 
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel

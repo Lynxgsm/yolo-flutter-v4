@@ -31,9 +31,9 @@ public final class GeneratedPluginRegistrant {
       Log.e(TAG, "Error registering plugin integration_test, dev.flutter.plugins.integration_test.IntegrationTestPlugin", e);
     }
     try {
-      flutterEngine.getPlugins().add(new com.ultralytics.yolo.YoloPlugin());
+      flutterEngine.getPlugins().add(new com.ultralytics.yolo_android.YoloPlugin());
     } catch (Exception e) {
-      Log.e(TAG, "Error registering plugin ultralytics_yolo, com.ultralytics.yolo.YoloPlugin", e);
+      Log.e(TAG, "Error registering plugin ultralytics_yolo_android, com.ultralytics.yolo_android.YoloPlugin", e);
     }
   }
 }

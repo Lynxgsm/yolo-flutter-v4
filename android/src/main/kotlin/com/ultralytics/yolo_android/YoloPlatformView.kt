@@ -1,4 +1,4 @@
-package com.ultralytics.yolo
+package com.ultralytics.yolo_android
 
 import android.content.Context
 import android.util.Log
@@ -28,7 +28,7 @@ class YoloPlatformView(
     
     init {
         // Create a unique channel for this view instance
-        methodChannel = MethodChannel(messenger, "com.ultralytics.yolo/YoloMethodChannel_$viewId")
+        methodChannel = MethodChannel(messenger, "com.ultralytics.yolo_android/YoloMethodChannel_$viewId")
         
         // Main thread handler
         val mainHandler = Handler(Looper.getMainLooper())

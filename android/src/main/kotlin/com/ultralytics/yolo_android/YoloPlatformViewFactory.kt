@@ -1,4 +1,4 @@
-package com.ultralytics.yolo
+package com.ultralytics.yolo_android
 
 import android.app.Activity
 import android.content.Context

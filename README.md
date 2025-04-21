@@ -22,7 +22,7 @@ Add this to your package's `pubspec.yaml` file:
 
 ```yaml
 dependencies:
-  ultralytics_yolo: ^0.0.4
+  ultralytics_yolo_android: ^0.0.4
 ```
 
 Then run:
@@ -69,9 +69,9 @@ Add these entries to your `Info.plist`:
 
 ```dart
 import 'package:flutter/material.dart';
-import 'package:ultralytics_yolo/yolo.dart';
-import 'package:ultralytics_yolo/yolo_view.dart';
-import 'package:ultralytics_yolo/yolo_task.dart';
+import 'package:ultralytics_yolo_android/yolo.dart';
+import 'package:ultralytics_yolo_android/yolo_view.dart';
+import 'package:ultralytics_yolo_android/yolo_task.dart';
 
 class YoloDemo extends StatelessWidget {
   @override

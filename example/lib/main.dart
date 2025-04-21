@@ -1,9 +1,9 @@
 // example/lib/main.dart
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
-import 'package:ultralytics_yolo/yolo.dart';
-import 'package:ultralytics_yolo/yolo_view.dart';
-import 'package:ultralytics_yolo/yolo_result.dart';
+import 'package:ultralytics_yolo_android/yolo.dart';
+import 'package:ultralytics_yolo_android/yolo_view.dart';
+import 'package:ultralytics_yolo_android/yolo_result.dart';
 import 'package:image_picker/image_picker.dart';
 
 void main() {

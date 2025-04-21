@@ -1,8 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:ultralytics_yolo/yolo_view.dart';
-import 'package:ultralytics_yolo/yolo_task.dart';
+import 'package:ultralytics_yolo_android/yolo_view.dart';
+import 'package:ultralytics_yolo_android/yolo_task.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();

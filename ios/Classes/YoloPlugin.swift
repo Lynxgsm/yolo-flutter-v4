@@ -124,7 +124,7 @@ public class YoloPlugin: NSObject, FlutterPlugin {
     public static func register(with registrar: FlutterPluginRegistrar) {
         // 1) Register the platform view
         let factory = SwiftYoloPlatformViewFactory(messenger: registrar.messenger())
-        registrar.register(factory, withId: "com.ultralytics.yolo/YoloPlatformView")
+        registrar.register(factory, withId: "com.ultralytics.yolo_android/YoloPlatformView")
 
         // 2) Register the method channel for single-image inference
         let channel = FlutterMethodChannel(

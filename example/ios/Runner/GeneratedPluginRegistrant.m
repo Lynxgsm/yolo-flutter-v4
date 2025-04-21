@@ -18,10 +18,10 @@
 @import integration_test;
 #endif
 
-#if __has_include(<ultralytics_yolo/YoloPlugin.h>)
-#import <ultralytics_yolo/YoloPlugin.h>
+#if __has_include(<ultralytics_yolo_android/YoloPlugin.h>)
+#import <ultralytics_yolo_android/YoloPlugin.h>
 #else
-@import ultralytics_yolo;
+@import ultralytics_yolo_android;
 #endif
 
 @implementation GeneratedPluginRegistrant

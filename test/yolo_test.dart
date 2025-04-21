@@ -1,10 +1,10 @@
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:ultralytics_yolo/yolo.dart';
-import 'package:ultralytics_yolo/yolo_result.dart';
-import 'package:ultralytics_yolo/yolo_platform_interface.dart';
-import 'package:ultralytics_yolo/yolo_method_channel.dart';
+import 'package:ultralytics_yolo_android/yolo.dart';
+import 'package:ultralytics_yolo_android/yolo_result.dart';
+import 'package:ultralytics_yolo_android/yolo_platform_interface.dart';
+import 'package:ultralytics_yolo_android/yolo_method_channel.dart';
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 import 'package:flutter/services.dart';
 

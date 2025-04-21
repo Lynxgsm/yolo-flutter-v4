@@ -1,4 +1,4 @@
-package com.ultralytics.yolo
+package com.ultralytics.yolo_android
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.RectF
@@ -287,7 +287,7 @@ class ObjectDetector(
         updateTiming()
 
         return YOLOResult(
-            origShape = com.ultralytics.yolo.Size(bitmap.height, bitmap.width),
+            origShape = com.ultralytics.yolo_android.Size(bitmap.height, bitmap.width),
             boxes = boxes,
             speed = t2,
             fps = if (t4 > 0) 1.0 / t4 else 0.0,

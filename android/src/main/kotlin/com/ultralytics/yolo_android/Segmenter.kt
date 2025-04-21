@@ -1,4 +1,4 @@
-package com.ultralytics.yolo
+package com.ultralytics.yolo_android
 
 import android.content.Context
 import android.graphics.*
@@ -103,7 +103,7 @@ class Segmenter(
         val inHeight = inputShape[1]
         val inWidth = inputShape[2]
         // BasePredictor の変数にセット
-        inputSize = com.ultralytics.yolo.Size(inWidth, inHeight)
+        inputSize = com.ultralytics.yolo_android.Size(inWidth, inHeight)
         modelInputSize = Pair(inWidth, inHeight)
 
         // 出力1の形状: [1, something, something] (例: [1,116,2100])
@@ -170,7 +170,7 @@ class Segmenter(
             Log.e("Segmenter", "Inference error: ${e.message}")
             val fpsDouble: Double = if (t4 > 0f) (1f / t4).toDouble() else 0.0
             return YOLOResult(
-                origShape = com.ultralytics.yolo.Size(bitmap.width, bitmap.height),
+                origShape = com.ultralytics.yolo_android.Size(bitmap.width, bitmap.height),
                 boxes = emptyList(),
                 speed = t2,
                 fps = fpsDouble,
@@ -214,7 +214,7 @@ class Segmenter(
         val masks = Masks(probMasks ?: emptyList(), combinedMask)
         val fpsDouble: Double = if (t4 > 0f) (1f / t4).toDouble() else 0.0
         return YOLOResult(
-            origShape = com.ultralytics.yolo.Size(bitmap.height, bitmap.width),
+            origShape = com.ultralytics.yolo_android.Size(bitmap.height, bitmap.width),
             boxes = boxes,
             masks = masks,
             speed = t2,
