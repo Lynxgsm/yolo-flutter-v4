@@ -92,6 +92,76 @@ class YoloViewController {
     }
   }
 
+  /// Set custom colors for detection boxes and labels
+  ///
+  /// @param colors List of color values in ARGB format (0xAARRGGBB)
+  /// @param applyAlpha Whether to apply confidence as alpha. If true, the alpha channel will be adjusted based on detection confidence
+  Future<void> setCustomColors(List<int> colors,
+      {bool applyAlpha = true}) async {
+    if (_methodChannel != null) {
+      try {
+        await _methodChannel!.invokeMethod('setCustomColors', {
+          'colors': colors,
+          'applyAlpha': applyAlpha,
+        });
+      } catch (e) {
+        print('Error setting custom colors: $e');
+      }
+    } else {
+      print('Warning: Method channel not initialized yet');
+    }
+  }
+
+  /// Reset colors to default
+  Future<void> resetColors() async {
+    if (_methodChannel != null) {
+      try {
+        await _methodChannel!.invokeMethod('resetColors');
+      } catch (e) {
+        print('Error resetting colors: $e');
+      }
+    } else {
+      print('Warning: Method channel not initialized yet');
+    }
+  }
+
+  /// Set label text color
+  ///
+  /// @param color The color value in ARGB format (0xAARRGGBB)
+  Future<void> setLabelTextColor(int color) async {
+    if (_methodChannel != null) {
+      try {
+        await _methodChannel!.invokeMethod('setLabelTextColor', {
+          'color': color,
+        });
+      } catch (e) {
+        print('Error setting label text color: $e');
+      }
+    } else {
+      print('Warning: Method channel not initialized yet');
+    }
+  }
+
+  /// Set label background color with optional transparency
+  ///
+  /// @param color The base color value in ARGB format (0xAARRGGBB)
+  /// @param opacity The opacity value between 0.0 (fully transparent) and 1.0 (fully opaque)
+  Future<void> setLabelBackgroundColor(int color,
+      {double opacity = 0.7}) async {
+    if (_methodChannel != null) {
+      try {
+        await _methodChannel!.invokeMethod('setLabelBackgroundColor', {
+          'color': color,
+          'opacity': opacity,
+        });
+      } catch (e) {
+        print('Error setting label background color: $e');
+      }
+    } else {
+      print('Warning: Method channel not initialized yet');
+    }
+  }
+
   /// Get current camera information asynchronously
   ///
   /// Returns a map with camera details such as:
@@ -223,6 +293,48 @@ class YoloView extends StatefulWidget {
     }
   }
 
+  /// Set custom colors for detection boxes and labels
+  ///
+  /// @param colors List of color values in ARGB format (0xAARRGGBB)
+  /// @param applyAlpha Whether to apply confidence as alpha. If true, the alpha channel will be adjusted based on detection confidence
+  static Future<void> setCustomColors(BuildContext context, List<int> colors,
+      {bool applyAlpha = true}) async {
+    final state = context.findAncestorStateOfType<_YoloViewState>();
+    if (state != null) {
+      await state.setCustomColors(colors, applyAlpha: applyAlpha);
+    }
+  }
+
+  /// Reset colors to default
+  static Future<void> resetColors(BuildContext context) async {
+    final state = context.findAncestorStateOfType<_YoloViewState>();
+    if (state != null) {
+      await state.resetColors();
+    }
+  }
+
+  /// Set label text color
+  ///
+  /// @param color The color value in ARGB format (0xAARRGGBB)
+  static Future<void> setLabelTextColor(BuildContext context, int color) async {
+    final state = context.findAncestorStateOfType<_YoloViewState>();
+    if (state != null) {
+      await state.setLabelTextColor(color);
+    }
+  }
+
+  /// Set label background color with optional transparency
+  ///
+  /// @param color The base color value in ARGB format (0xAARRGGBB)
+  /// @param opacity The opacity value between 0.0 (fully transparent) and 1.0 (fully opaque)
+  static Future<void> setLabelBackgroundColor(BuildContext context, int color,
+      {double opacity = 0.7}) async {
+    final state = context.findAncestorStateOfType<_YoloViewState>();
+    if (state != null) {
+      await state.setLabelBackgroundColor(color, opacity: opacity);
+    }
+  }
+
   @override
   State<YoloView> createState() => _YoloViewState();
 }
@@ -307,6 +419,60 @@ class _YoloViewState extends State<YoloView> {
       });
     } catch (e) {
       print('Error setting show boxes: $e');
+    }
+  }
+
+  /// Set custom colors for detection boxes and labels
+  ///
+  /// @param colors List of color values in ARGB format (0xAARRGGBB)
+  /// @param applyAlpha Whether to apply confidence as alpha. If true, the alpha channel will be adjusted based on detection confidence
+  Future<void> setCustomColors(List<int> colors,
+      {bool applyAlpha = true}) async {
+    try {
+      await _methodChannel.invokeMethod('setCustomColors', {
+        'colors': colors,
+        'applyAlpha': applyAlpha,
+      });
+    } catch (e) {
+      print('Error setting custom colors: $e');
+    }
+  }
+
+  /// Reset colors to default
+  Future<void> resetColors() async {
+    try {
+      await _methodChannel.invokeMethod('resetColors');
+    } catch (e) {
+      print('Error resetting colors: $e');
+    }
+  }
+
+  /// Set label text color
+  ///
+  /// @param color The color value in ARGB format (0xAARRGGBB)
+  Future<void> setLabelTextColor(int color) async {
+    try {
+      await _methodChannel.invokeMethod('setLabelTextColor', {
+        'color': color,
+      });
+    } catch (e) {
+      print('Error setting label text color: $e');
+    }
+  }
+
+  /// Set label background color with optional transparency
+  ///
+  /// @param color The base color value in ARGB format (0xAARRGGBB)
+  /// @param opacity The opacity value between 0.0 (fully transparent) and 1.0 (fully opaque)
+  Future<void> setLabelBackgroundColor(int color,
+      {double opacity = 0.7}) async {
+    try {
+      await _methodChannel.invokeMethod('setLabelBackgroundColor', {
+        'color': color,
+        'opacity': opacity,
+      });
+    } catch (e) {
+      print('Error setting label background color: $e');
     }
   }
 

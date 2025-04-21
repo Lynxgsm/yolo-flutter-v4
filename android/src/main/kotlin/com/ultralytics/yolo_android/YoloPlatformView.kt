@@ -83,6 +83,68 @@ class YoloPlatformView(
                         result.error("SET_SHOW_BOXES_ERROR", e.message, null)
                     }
                 }
+                "setCustomColors" -> {
+                    try {
+                        val colors = call.argument<List<Int>>("colors")
+                        val applyAlpha = call.argument<Boolean>("applyAlpha") ?: true
+                        
+                        if (colors == null || colors.isEmpty()) {
+                            result.error("INVALID_COLORS", "Colors list cannot be empty", null)
+                            return@setMethodCallHandler
+                        }
+                        
+                        Log.d(TAG, "Setting custom colors: $colors, applyAlpha: $applyAlpha")
+                        yoloView.setCustomColors(colors, applyAlpha)
+                        result.success(null)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error setting custom colors: ${e.message}", e)
+                        result.error("SET_CUSTOM_COLORS_ERROR", e.message, null)
+                    }
+                }
+                "resetColors" -> {
+                    try {
+                        Log.d(TAG, "Resetting colors to default")
+                        yoloView.resetColors()
+                        result.success(null)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error resetting colors: ${e.message}", e)
+                        result.error("RESET_COLORS_ERROR", e.message, null)
+                    }
+                }
+                "setLabelTextColor" -> {
+                    try {
+                        val color = call.argument<Int>("color")
+                        if (color == null) {
+                            result.error("INVALID_COLOR", "Color value cannot be null", null)
+                            return@setMethodCallHandler
+                        }
+                        
+                        Log.d(TAG, "Setting label text color: $color")
+                        yoloView.setLabelTextColor(color)
+                        result.success(null)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error setting label text color: ${e.message}", e)
+                        result.error("SET_LABEL_TEXT_COLOR_ERROR", e.message, null)
+                    }
+                }
+                "setLabelBackgroundColor" -> {
+                    try {
+                        val color = call.argument<Int>("color")
+                        val opacity = call.argument<Double>("opacity") ?: 0.7
+                        
+                        if (color == null) {
+                            result.error("INVALID_COLOR", "Color value cannot be null", null)
+                            return@setMethodCallHandler
+                        }
+                        
+                        Log.d(TAG, "Setting label background color: $color with opacity: $opacity")
+                        yoloView.setLabelBackgroundColor(color, opacity.toFloat())
+                        result.success(null)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error setting label background color: ${e.message}", e)
+                        result.error("SET_LABEL_BG_COLOR_ERROR", e.message, null)
+                    }
+                }
                 "getCameraInfo" -> {
                     try {
                         val width = yoloView.previewView.width

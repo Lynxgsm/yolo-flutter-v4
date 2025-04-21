@@ -175,6 +175,37 @@ class YoloView @JvmOverloads constructor(
     // Flag to control whether to show detection boxes
     private var showBoxes: Boolean = true
     
+    // Custom colors for detection boxes
+    private var customColors: List<Int>? = null
+    private var applyConfidenceAlpha: Boolean = true
+    
+    // Label colors
+    private var labelTextColor: Int? = null
+    private var labelBackgroundColor: Int? = null
+    private var labelBackgroundOpacity: Float = 0.7f
+    
+    /**
+     * Set custom colors for detection boxes and labels
+     * @param colors List of color values in ARGB format (0xAARRGGBB)
+     * @param applyAlpha Whether to apply confidence as alpha
+     */
+    fun setCustomColors(colors: List<Int>, applyAlpha: Boolean) {
+        this.customColors = colors
+        this.applyConfidenceAlpha = applyAlpha
+        overlayView.invalidate() // Redraw with new colors
+    }
+    
+    /**
+     * Reset colors to default
+     */
+    fun resetColors() {
+        this.customColors = null
+        this.labelTextColor = null
+        this.labelBackgroundColor = null
+        this.labelBackgroundOpacity = 0.7f
+        overlayView.invalidate() // Redraw with default colors
+    }
+
     /**
      * Set whether to show detection boxes in the view
      */
@@ -198,6 +229,26 @@ class YoloView @JvmOverloads constructor(
     fun setMinConfidence(confidence: Float) {
         this.minConfidence = confidence
         overlayView.invalidate() // Redraw with new filter
+    }
+
+    /**
+     * Set label text color
+     * @param color The color in ARGB format
+     */
+    fun setLabelTextColor(color: Int) {
+        this.labelTextColor = color
+        overlayView.invalidate() // Redraw with new text color
+    }
+    
+    /**
+     * Set label background color
+     * @param color The color in ARGB format
+     * @param opacity Opacity value between 0.0 and 1.0
+     */
+    fun setLabelBackgroundColor(color: Int, opacity: Float) {
+        this.labelBackgroundColor = color
+        this.labelBackgroundOpacity = opacity.coerceIn(0f, 1f)
+        overlayView.invalidate() // Redraw with new background color
     }
 
     init {
@@ -516,13 +567,26 @@ class YoloView @JvmOverloads constructor(
 
                         // confidence に応じてアルファ調整
                         val alpha = (box.conf * 255).toInt().coerceIn(0, 255)
-                        val baseColor = ultralyticsColors[box.index % ultralyticsColors.size]
-                        val newColor = Color.argb(
-                            alpha,
-                            Color.red(baseColor),
-                            Color.green(baseColor),
-                            Color.blue(baseColor)
-                        )
+                        
+                        // Use custom colors if available, otherwise use default colors
+                        val baseColor = if (customColors != null && customColors!!.isNotEmpty()) {
+                            // Use modulo to cycle through the custom colors
+                            customColors!![box.index % customColors!!.size]
+                        } else {
+                            ultralyticsColors[box.index % ultralyticsColors.size]
+                        }
+                        
+                        // Apply alpha based on confidence if applyConfidenceAlpha is true
+                        val newColor = if (applyConfidenceAlpha) {
+                            Color.argb(
+                                alpha,
+                                Color.red(baseColor),
+                                Color.green(baseColor),
+                                Color.blue(baseColor)
+                            )
+                        } else {
+                            baseColor
+                        }
 
                         // 元のbox.xywhの値をログ出力
                         // Log.d(TAG, "Box raw coords: L=${box.xywh.left}, T=${box.xywh.top}, R=${box.xywh.right}, B=${box.xywh.bottom}, cls=${box.cls}, conf=${box.conf}")
@@ -565,12 +629,24 @@ class YoloView @JvmOverloads constructor(
 
                         // 背景を描画
                         paint.style = Paint.Style.FILL
-                        paint.color = newColor
+                        // Use custom label background color if set, otherwise use detection box color
+                        paint.color = if (labelBackgroundColor != null) {
+                            // Apply the configured opacity
+                            val alpha = (labelBackgroundOpacity * 255).toInt().coerceIn(0, 255)
+                            Color.argb(
+                                alpha,
+                                Color.red(labelBackgroundColor!!),
+                                Color.green(labelBackgroundColor!!),
+                                Color.blue(labelBackgroundColor!!)
+                            )
+                        } else {
+                            newColor
+                        }
                         canvas.drawRoundRect(bgRect, BOX_CORNER_RADIUS, BOX_CORNER_RADIUS, paint)
 
                         // テキストを矩形内で縦中央に合わせる
-                        paint.color = Color.WHITE
-                        // 中心位置 = (bgRect.top + bgRect.bottom)/2
+                        // Use custom label text color if set, otherwise use white
+                        paint.color = labelTextColor ?: Color.WHITE
                         val centerY = (labelTop + labelBottom) / 2
                         // ベースライン = centerY - (fm.descent + fm.ascent)/2
                         val baseline = centerY - (fm.descent + fm.ascent) / 2
@@ -591,13 +667,26 @@ class YoloView @JvmOverloads constructor(
                         if (allowedClasses.isNotEmpty() && !allowedClasses.contains(box.cls)) continue
 
                         val alpha = (box.conf * 255).toInt().coerceIn(0, 255)
-                        val baseColor = ultralyticsColors[box.index % ultralyticsColors.size]
-                        val newColor = Color.argb(
-                            alpha,
-                            Color.red(baseColor),
-                            Color.green(baseColor),
-                            Color.blue(baseColor)
-                        )
+                        
+                        // Use custom colors if available, otherwise use default colors
+                        val baseColor = if (customColors != null && customColors!!.isNotEmpty()) {
+                            // Use modulo to cycle through the custom colors
+                            customColors!![box.index % customColors!!.size]
+                        } else {
+                            ultralyticsColors[box.index % ultralyticsColors.size]
+                        }
+                        
+                        // Apply alpha based on confidence if applyConfidenceAlpha is true
+                        val newColor = if (applyConfidenceAlpha) {
+                            Color.argb(
+                                alpha,
+                                Color.red(baseColor),
+                                Color.green(baseColor),
+                                Color.blue(baseColor)
+                            )
+                        } else {
+                            baseColor
+                        }
 
                         // バウンディングボックス描画
                         val left   = box.xywh.left   * scale + dx
@@ -630,10 +719,21 @@ class YoloView @JvmOverloads constructor(
                         val bgRect = RectF(labelLeft, labelTop, labelRight, labelBottom)
 
                         paint.style = Paint.Style.FILL
-                        paint.color = newColor
+                        paint.color = if (labelBackgroundColor != null) {
+                            // Apply the configured opacity
+                            val alpha = (labelBackgroundOpacity * 255).toInt().coerceIn(0, 255)
+                            Color.argb(
+                                alpha,
+                                Color.red(labelBackgroundColor!!),
+                                Color.green(labelBackgroundColor!!),
+                                Color.blue(labelBackgroundColor!!)
+                            )
+                        } else {
+                            newColor
+                        }
                         canvas.drawRoundRect(bgRect, BOX_CORNER_RADIUS, BOX_CORNER_RADIUS, paint)
 
-                        paint.color = Color.WHITE
+                        paint.color = labelTextColor ?: Color.WHITE
                         val centerY = (labelTop + labelBottom) / 2
                         val baseline = centerY - (fm.descent + fm.ascent) / 2
                         canvas.drawText(labelText, labelLeft + pad, baseline, paint)
@@ -658,8 +758,15 @@ class YoloView @JvmOverloads constructor(
                         if (allowedClasses.isNotEmpty() && !allowedClasses.contains(probs.top1)) return
 
                         val alpha = (probs.top1Conf * 255).toInt().coerceIn(0, 255)
-                        // top1Index で色を選択
-                        val baseColor = ultralyticsColors[probs.top1Index % ultralyticsColors.size]
+                        
+                        // Use custom colors if available, otherwise use default colors
+                        val baseColor = if (customColors != null && customColors!!.isNotEmpty()) {
+                            // Use modulo to cycle through the custom colors
+                            customColors!![probs.top1Index % customColors!!.size]
+                        } else {
+                            ultralyticsColors[probs.top1Index % ultralyticsColors.size]
+                        }
+                        
                         val newColor = Color.argb(
                             alpha,
                             Color.red(baseColor),
@@ -683,12 +790,25 @@ class YoloView @JvmOverloads constructor(
                         val bgRight  = centerX + (textWidth / 2) + pad
                         val bgBottom = centerY + (textHeight / 2) + pad
 
-                        paint.color = newColor
                         paint.style = Paint.Style.FILL
                         val bgRect = RectF(bgLeft, bgTop, bgRight, bgBottom)
+                        
+                        // Use custom label background color if set, otherwise use detection box color
+                        paint.color = if (labelBackgroundColor != null) {
+                            // Apply the configured opacity
+                            val alpha = (labelBackgroundOpacity * 255).toInt().coerceIn(0, 255)
+                            Color.argb(
+                                alpha,
+                                Color.red(labelBackgroundColor!!),
+                                Color.green(labelBackgroundColor!!),
+                                Color.blue(labelBackgroundColor!!)
+                            )
+                        } else {
+                            newColor
+                        }
                         canvas.drawRoundRect(bgRect, 20f, 20f, paint)
 
-                        paint.color = Color.WHITE
+                        paint.color = labelTextColor ?: Color.WHITE
                         val baseline = centerY - (fm.descent + fm.ascent)/2
                         canvas.drawText(labelText, centerX - (textWidth / 2), baseline, paint)
                     }
@@ -704,7 +824,15 @@ class YoloView @JvmOverloads constructor(
                         if (allowedClasses.isNotEmpty() && !allowedClasses.contains(box.cls)) continue
 
                         val alpha = (box.conf * 255).toInt().coerceIn(0, 255)
-                        val baseColor = ultralyticsColors[box.index % ultralyticsColors.size]
+                        
+                        // Use custom colors if available, otherwise use default colors
+                        val baseColor = if (customColors != null && customColors!!.isNotEmpty()) {
+                            // Use modulo to cycle through the custom colors
+                            customColors!![box.index % customColors!!.size]
+                        } else {
+                            ultralyticsColors[box.index % ultralyticsColors.size]
+                        }
+                        
                         val newColor = Color.argb(
                             alpha,
                             Color.red(baseColor),
@@ -786,7 +914,15 @@ class YoloView @JvmOverloads constructor(
                         if (allowedClasses.isNotEmpty() && !allowedClasses.contains(obbRes.cls)) continue
 
                         val alpha = (obbRes.confidence * 255).toInt().coerceIn(0, 255)
-                        val baseColor = ultralyticsColors[obbRes.index % ultralyticsColors.size]
+                        
+                        // Use custom colors if available, otherwise use default colors
+                        val baseColor = if (customColors != null && customColors!!.isNotEmpty()) {
+                            // Use modulo to cycle through the custom colors
+                            customColors!![obbRes.index % customColors!!.size]
+                        } else {
+                            ultralyticsColors[obbRes.index % ultralyticsColors.size]
+                        }
+                        
                         val newColor = Color.argb(
                             alpha,
                             Color.red(baseColor),
@@ -832,11 +968,24 @@ class YoloView @JvmOverloads constructor(
 
                             val bgRect = RectF(labelLeft, labelTop, labelRight, labelBottom)
                             paint.style = Paint.Style.FILL
-                            paint.color = newColor
+                            
+                            // Use custom label background color if set, otherwise use detection box color
+                            paint.color = if (labelBackgroundColor != null) {
+                                // Apply the configured opacity
+                                val alpha = (labelBackgroundOpacity * 255).toInt().coerceIn(0, 255)
+                                Color.argb(
+                                    alpha,
+                                    Color.red(labelBackgroundColor!!),
+                                    Color.green(labelBackgroundColor!!),
+                                    Color.blue(labelBackgroundColor!!)
+                                )
+                            } else {
+                                newColor
+                            }
                             canvas.drawRoundRect(bgRect, cornerRadius, cornerRadius, paint)
 
                             // テキストを縦中央揃え
-                            paint.color = Color.WHITE
+                            paint.color = labelTextColor ?: Color.WHITE
                             val centerY = (labelTop + labelBottom) / 2
                             val baseline = centerY - (fm.descent + fm.ascent) / 2
                             val textX = labelLeft + padding
