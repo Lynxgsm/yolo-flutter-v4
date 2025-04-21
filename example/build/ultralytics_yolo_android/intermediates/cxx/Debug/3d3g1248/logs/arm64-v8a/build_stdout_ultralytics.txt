@@ -1,0 +1,3 @@
+ninja: Entering directory `/Users/geko/tmp/yolo-flutter-v4/android/.cxx/Debug/3d3g1248/arm64-v8a'
+[1/2] Building CXX object CMakeFiles/ultralytics.dir/native-lib.cpp.o
+[2/2] Linking CXX shared library /Users/geko/tmp/yolo-flutter-v4/example/build/ultralytics_yolo_android/intermediates/cxx/Debug/3d3g1248/obj/arm64-v8a/libultralytics.so

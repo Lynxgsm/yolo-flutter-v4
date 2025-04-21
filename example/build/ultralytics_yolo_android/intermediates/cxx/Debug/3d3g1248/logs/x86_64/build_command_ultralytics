@@ -1,0 +1,4 @@
+/Users/geko/Library/Android/sdk/cmake/3.22.1/bin/ninja \
+  -C \
+  /Users/geko/tmp/yolo-flutter-v4/android/.cxx/Debug/3d3g1248/x86_64 \
+  ultralytics

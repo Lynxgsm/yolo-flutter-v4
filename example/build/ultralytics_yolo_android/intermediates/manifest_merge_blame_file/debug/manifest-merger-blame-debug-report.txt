@@ -1,0 +1,42 @@
+1<?xml version="1.0" encoding="utf-8"?>
+2<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+3    package="com.ultralytics.yolo_android" >
+4
+5    <uses-sdk android:minSdkVersion="21" />
+6
+7    <uses-permission android:name="android.permission.CAMERA" />
+7-->/Users/geko/tmp/yolo-flutter-v4/android/src/main/AndroidManifest.xml:4:3-63
+7-->/Users/geko/tmp/yolo-flutter-v4/android/src/main/AndroidManifest.xml:4:20-60
+8    <uses-permission
+8-->/Users/geko/tmp/yolo-flutter-v4/android/src/main/AndroidManifest.xml:5:3-106
+9        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+9-->/Users/geko/tmp/yolo-flutter-v4/android/src/main/AndroidManifest.xml:5:20-76
+10        android:maxSdkVersion="29" />
+10-->/Users/geko/tmp/yolo-flutter-v4/android/src/main/AndroidManifest.xml:5:77-103
+11    <uses-permission
+11-->/Users/geko/tmp/yolo-flutter-v4/android/src/main/AndroidManifest.xml:6:3-105
+12        android:name="android.permission.READ_EXTERNAL_STORAGE"
+12-->/Users/geko/tmp/yolo-flutter-v4/android/src/main/AndroidManifest.xml:6:20-75
+13        android:maxSdkVersion="32" />
+13-->/Users/geko/tmp/yolo-flutter-v4/android/src/main/AndroidManifest.xml:6:76-102
+14    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
+14-->/Users/geko/tmp/yolo-flutter-v4/android/src/main/AndroidManifest.xml:7:3-73
+14-->/Users/geko/tmp/yolo-flutter-v4/android/src/main/AndroidManifest.xml:7:20-70
+15    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+15-->/Users/geko/tmp/yolo-flutter-v4/android/src/main/AndroidManifest.xml:8:3-74
+15-->/Users/geko/tmp/yolo-flutter-v4/android/src/main/AndroidManifest.xml:8:20-71
+16
+17    <uses-feature
+17-->/Users/geko/tmp/yolo-flutter-v4/android/src/main/AndroidManifest.xml:10:3-12:34
+18        android:name="android.hardware.camera"
+18-->/Users/geko/tmp/yolo-flutter-v4/android/src/main/AndroidManifest.xml:11:7-45
+19        android:required="false" />
+19-->/Users/geko/tmp/yolo-flutter-v4/android/src/main/AndroidManifest.xml:12:7-31
+20    <uses-feature
+20-->/Users/geko/tmp/yolo-flutter-v4/android/src/main/AndroidManifest.xml:13:3-15:34
+21        android:name="android.hardware.camera.autofocus"
+21-->/Users/geko/tmp/yolo-flutter-v4/android/src/main/AndroidManifest.xml:14:7-55
+22        android:required="false" />
+22-->/Users/geko/tmp/yolo-flutter-v4/android/src/main/AndroidManifest.xml:15:7-31
+23
+24</manifest>

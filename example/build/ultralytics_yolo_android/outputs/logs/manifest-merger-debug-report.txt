@@ -1,0 +1,53 @@
+-- Merging decision tree log ---
+manifest
+ADDED from /Users/geko/tmp/yolo-flutter-v4/android/src/main/AndroidManifest.xml:1:1-16:12
+INJECTED from /Users/geko/tmp/yolo-flutter-v4/android/src/main/AndroidManifest.xml:1:1-16:12
+	package
+		ADDED from /Users/geko/tmp/yolo-flutter-v4/android/src/main/AndroidManifest.xml:2:3-41
+		INJECTED from /Users/geko/tmp/yolo-flutter-v4/android/src/main/AndroidManifest.xml
+	xmlns:android
+		ADDED from /Users/geko/tmp/yolo-flutter-v4/android/src/main/AndroidManifest.xml:1:11-69
+uses-permission#android.permission.CAMERA
+ADDED from /Users/geko/tmp/yolo-flutter-v4/android/src/main/AndroidManifest.xml:4:3-63
+	android:name
+		ADDED from /Users/geko/tmp/yolo-flutter-v4/android/src/main/AndroidManifest.xml:4:20-60
+uses-permission#android.permission.WRITE_EXTERNAL_STORAGE
+ADDED from /Users/geko/tmp/yolo-flutter-v4/android/src/main/AndroidManifest.xml:5:3-106
+	android:maxSdkVersion
+		ADDED from /Users/geko/tmp/yolo-flutter-v4/android/src/main/AndroidManifest.xml:5:77-103
+	android:name
+		ADDED from /Users/geko/tmp/yolo-flutter-v4/android/src/main/AndroidManifest.xml:5:20-76
+uses-permission#android.permission.READ_EXTERNAL_STORAGE
+ADDED from /Users/geko/tmp/yolo-flutter-v4/android/src/main/AndroidManifest.xml:6:3-105
+	android:maxSdkVersion
+		ADDED from /Users/geko/tmp/yolo-flutter-v4/android/src/main/AndroidManifest.xml:6:76-102
+	android:name
+		ADDED from /Users/geko/tmp/yolo-flutter-v4/android/src/main/AndroidManifest.xml:6:20-75
+uses-permission#android.permission.READ_MEDIA_VIDEO
+ADDED from /Users/geko/tmp/yolo-flutter-v4/android/src/main/AndroidManifest.xml:7:3-73
+	android:name
+		ADDED from /Users/geko/tmp/yolo-flutter-v4/android/src/main/AndroidManifest.xml:7:20-70
+uses-permission#android.permission.READ_MEDIA_IMAGES
+ADDED from /Users/geko/tmp/yolo-flutter-v4/android/src/main/AndroidManifest.xml:8:3-74
+	android:name
+		ADDED from /Users/geko/tmp/yolo-flutter-v4/android/src/main/AndroidManifest.xml:8:20-71
+uses-feature#android.hardware.camera
+ADDED from /Users/geko/tmp/yolo-flutter-v4/android/src/main/AndroidManifest.xml:10:3-12:34
+	android:required
+		ADDED from /Users/geko/tmp/yolo-flutter-v4/android/src/main/AndroidManifest.xml:12:7-31
+	android:name
+		ADDED from /Users/geko/tmp/yolo-flutter-v4/android/src/main/AndroidManifest.xml:11:7-45
+uses-feature#android.hardware.camera.autofocus
+ADDED from /Users/geko/tmp/yolo-flutter-v4/android/src/main/AndroidManifest.xml:13:3-15:34
+	android:required
+		ADDED from /Users/geko/tmp/yolo-flutter-v4/android/src/main/AndroidManifest.xml:15:7-31
+	android:name
+		ADDED from /Users/geko/tmp/yolo-flutter-v4/android/src/main/AndroidManifest.xml:14:7-55
+uses-sdk
+INJECTED from /Users/geko/tmp/yolo-flutter-v4/android/src/main/AndroidManifest.xml reason: use-sdk injection requested
+INJECTED from /Users/geko/tmp/yolo-flutter-v4/android/src/main/AndroidManifest.xml
+INJECTED from /Users/geko/tmp/yolo-flutter-v4/android/src/main/AndroidManifest.xml
+	android:targetSdkVersion
+		INJECTED from /Users/geko/tmp/yolo-flutter-v4/android/src/main/AndroidManifest.xml
+	android:minSdkVersion
+		INJECTED from /Users/geko/tmp/yolo-flutter-v4/android/src/main/AndroidManifest.xml
