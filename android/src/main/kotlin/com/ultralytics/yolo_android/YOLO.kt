@@ -485,14 +485,14 @@ class YOLO(
      * Set confidence threshold for detection
      */
     fun setConfidenceThreshold(threshold: Double) {
-        predictor.setConfidenceThreshold(threshold)
+        predictor.setConfidenceThreshold(threshold.toFloat())
     }
 
     /**
      * Set IoU threshold for non-maximum suppression
      */
     fun setIouThreshold(threshold: Double) {
-        predictor.setIouThreshold(threshold)
+        predictor.setIouThreshold(threshold.toFloat())
     }
 
     /**

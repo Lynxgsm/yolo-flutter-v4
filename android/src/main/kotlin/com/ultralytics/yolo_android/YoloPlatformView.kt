@@ -27,18 +27,31 @@ class YoloPlatformView(
     // 初期化フラグ
     private var initialized = false
     
+    // Add a disposed flag at the class level
+    private var disposed = false
+    
     init {
         // Create a unique channel for this view instance
         methodChannel = MethodChannel(messenger, "com.ultralytics.yolo_android/YoloMethodChannel_$viewId")
         
         // Set up method channel handler
         methodChannel.setMethodCallHandler { call, result ->
+            if (disposed) {
+                result.error("DISPOSED", "YoloPlatformView has been disposed", null)
+                return@setMethodCallHandler
+            }
+            
             when (call.method) {
                 "setAllowedClasses" -> {
                     try {
-                        val classes = call.argument<List<String>>("classes") ?: listOf()
-                        yoloView.setAllowedClasses(classes)
-                        result.success(null)
+                        val classes = call.argument<List<String>>("classes")
+                        if (classes != null) {
+                            Log.d(TAG, "Setting allowed classes: $classes")
+                            yoloView.setAllowedClasses(classes)
+                            result.success(true)
+                        } else {
+                            result.error("INVALID_ARGUMENT", "Classes list cannot be null", null)
+                        }
                     } catch (e: Exception) {
                         Log.e(TAG, "Error setting allowed classes: ${e.message}", e)
                         result.error("SET_ALLOWED_CLASSES_ERROR", e.message, null)
@@ -190,6 +203,46 @@ class YoloPlatformView(
                     } catch (e: Exception) {
                         Log.e(TAG, "Error stopping recording: ${e.message}", e)
                         result.error("STOP_RECORDING_ERROR", e.message, null)
+                    }
+                }
+                "pauseLivePrediction" -> {
+                    try {
+                        val pause = call.argument<Boolean>("pause") ?: false
+                        Log.d(TAG, "Setting prediction pause state: $pause")
+                        val newState = yoloView.pauseLivePrediction(pause)
+                        result.success(newState)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error setting prediction pause state: ${e.message}", e)
+                        result.error("PAUSE_PREDICTION_ERROR", e.message, null)
+                    }
+                }
+                "togglePredictionPause" -> {
+                    try {
+                        Log.d(TAG, "Toggling prediction pause state")
+                        val newState = yoloView.togglePredictionPause()
+                        result.success(newState)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error toggling prediction pause state: ${e.message}", e)
+                        result.error("TOGGLE_PAUSE_ERROR", e.message, null)
+                    }
+                }
+                "isPredictionPaused" -> {
+                    try {
+                        val isPaused = yoloView.isPredictionPaused()
+                        result.success(isPaused)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error checking prediction pause state: ${e.message}", e)
+                        result.error("IS_PAUSED_ERROR", e.message, null)
+                    }
+                }
+                "dispose" -> {
+                    try {
+                        Log.d(TAG, "Disposing YoloPlatformView")
+                        dispose()
+                        result.success(true)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error during dispose: ${e.message}", e)
+                        result.error("DISPOSE_ERROR", e.message, null)
                     }
                 }
                 else -> {
@@ -356,5 +409,19 @@ class YoloPlatformView(
 
     override fun dispose() {
         Log.d(TAG, "Disposing YoloPlatformView")
+        try {
+            // Mark the view as disposed to prevent further method calls
+            disposed = true
+            
+            // Dispose of YoloView resources first
+            yoloView.dispose()
+
+            // Clear method channel handler to prevent further calls
+            methodChannel.setMethodCallHandler(null)
+            
+            Log.d(TAG, "YoloPlatformView disposed successfully")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error disposing YoloPlatformView", e)
+        }
     }
 }

@@ -122,6 +122,9 @@ class YoloView @JvmOverloads constructor(
 
     // ★ 推論結果を外部へ通知するためのコールバック
     private var inferenceCallback: ((YOLOResult) -> Unit)? = null
+    
+    // Flag to track whether predictions are paused
+    private var isPredictionPaused = false
 
     /** コールバックをセット */
     fun setOnInferenceCallback(callback: (YOLOResult) -> Unit) {
@@ -164,8 +167,8 @@ class YoloView @JvmOverloads constructor(
     private lateinit var cameraProviderFuture: ListenableFuture<ProcessCameraProvider>
 
     // detection thresholds (外部から setter で変更可能に)
-    private var confidenceThreshold = 0.25  // 初期値
-    private var iouThreshold = 0.45
+    private var confidenceThreshold = 0.25f
+    private var iouThreshold = 0.45f
     private var numItemsThreshold = 30
 
     // Filter settings
@@ -251,6 +254,9 @@ class YoloView @JvmOverloads constructor(
         overlayView.invalidate() // Redraw with new background color
     }
 
+    // Video recording component
+    internal val videoRecorder = VideoRecorder(context)
+
     init {
         // Clear any existing children
         removeAllViews()
@@ -289,12 +295,12 @@ class YoloView @JvmOverloads constructor(
     // region threshold setters
 
     fun setConfidenceThreshold(conf: Double) {
-        confidenceThreshold = conf
+        confidenceThreshold = conf.toFloat()
         (predictor as? ObjectDetector)?.setConfidenceThreshold(conf.toFloat())
     }
 
     fun setIouThreshold(iou: Double) {
-        iouThreshold = iou
+        iouThreshold = iou.toFloat()
         (predictor as? ObjectDetector)?.setIouThreshold(iou.toFloat())
     }
 
@@ -310,7 +316,8 @@ class YoloView @JvmOverloads constructor(
     fun setModel(modelPath: String, task: YOLOTask, context: Context) {
         Executors.newSingleThreadExecutor().execute {
             try {
-                val newPredictor = when (task) {
+                // Make sure the when clause is exhaustive by assigning to a variable
+                val newPredictor: Predictor = when (task) {
                     YOLOTask.DETECT -> ObjectDetector(context, modelPath, loadLabels(modelPath), useGpu = true).apply {
                         setConfidenceThreshold(confidenceThreshold.toFloat())
                         setIouThreshold(iouThreshold.toFloat())
@@ -374,7 +381,7 @@ class YoloView @JvmOverloads constructor(
         }
     }
 
-    private fun allPermissionsGranted() = REQUIRED_PERMISSIONS.all {
+    private fun allPermissionsGranted(): Boolean = REQUIRED_PERMISSIONS.all {
         ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED
     }
 
@@ -479,28 +486,145 @@ class YoloView @JvmOverloads constructor(
             return
         }
 
-        predictor?.let { p ->
-            try {
-                // For camera feed, we typically rotate the bitmap
-                val result = p.predict(bitmap, h, w, rotateForCamera = true)
-                inferenceResult = result
+        // Skip prediction if paused, but still encode video frame if recording
+        if (!isPredictionPaused) {
+            predictor?.let { p ->
+                try {
+                    // For camera feed, we typically rotate the bitmap
+                    val result = p.predict(bitmap, h, w, rotateForCamera = true)
+                    inferenceResult = result
 
-                // Log
-                Log.d(TAG, "Inference complete: ${result.boxes.size} boxes detected")
+                    // Log
+                    Log.d(TAG, "Inference complete: ${result.boxes.size} boxes detected")
 
-                // Callback
-                inferenceCallback?.invoke(result)
+                    // Callback
+                    inferenceCallback?.invoke(result)
 
-                // Update overlay
-                post {
-                    overlayView.invalidate()
-                    Log.d(TAG, "Overlay invalidated for redraw")
+                    // Update overlay
+                    post {
+                        overlayView.invalidate()
+                        Log.d(TAG, "Overlay invalidated for redraw")
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error during prediction", e)
                 }
-            } catch (e: Exception) {
-                Log.e(TAG, "Error during prediction", e)
             }
         }
+        
+        // Add frame to video recording if active
+        // Use explicit block structure and intermediate variable to avoid Kotlin treating this as an expression
+        val isCurrentlyRecording = videoRecorder.isRecording()
+        if (isCurrentlyRecording) {
+            videoRecorder.encodeFrame(bitmap) { canvas, width, height ->
+                drawDetectionsOnBitmap(canvas, width, height)
+            }
+        } else {
+            // Empty else branch to explicitly show this is not an expression
+        }
+        
         imageProxy.close()
+    }
+    
+    /**
+     * Draws detection results onto a bitmap canvas
+     */
+    private fun drawDetectionsOnBitmap(canvas: Canvas, width: Int, height: Int) {
+        val result = inferenceResult ?: return
+        val paint = Paint().apply { isAntiAlias = true }
+        
+        // Calculate scaling factors
+        val iw = result.origShape.width.toFloat()
+        val ih = result.origShape.height.toFloat()
+        val vw = width.toFloat()
+        val vh = height.toFloat()
+        
+        val scaleX = vw / iw
+        val scaleY = vh / ih
+        val scale = max(scaleX, scaleY)
+        
+        val scaledW = iw * scale
+        val scaledH = ih * scale
+        
+        val dx = (vw - scaledW) / 2f
+        val dy = (vh - scaledH) / 2f
+        
+        // Draw detection boxes and labels (simplified from OverlayView.onDraw)
+        for (box in result.boxes) {
+            // Apply filtering
+            if (box.conf < minConfidence) continue
+            if (allowedClasses.isNotEmpty() && !allowedClasses.contains(box.cls)) continue
+            
+            val alpha = (box.conf * 255).toInt().coerceIn(0, 255)
+            val baseColor = if (customColors != null && customColors!!.isNotEmpty()) {
+                customColors!![box.index % customColors!!.size]
+            } else {
+                ultralyticsColors[box.index % ultralyticsColors.size]
+            }
+            
+            val newColor = if (applyConfidenceAlpha) {
+                Color.argb(
+                    alpha,
+                    Color.red(baseColor),
+                    Color.green(baseColor),
+                    Color.blue(baseColor)
+                )
+            } else {
+                baseColor
+            }
+            
+            // Draw bounding box
+            val left = box.xywh.left * scale + dx
+            val top = box.xywh.top * scale + dy
+            val right = box.xywh.right * scale + dx
+            val bottom = box.xywh.bottom * scale + dy
+            
+            paint.color = newColor
+            paint.style = Paint.Style.STROKE
+            paint.strokeWidth = BOX_LINE_WIDTH
+            canvas.drawRoundRect(
+                left, top, right, bottom,
+                BOX_CORNER_RADIUS, BOX_CORNER_RADIUS,
+                paint
+            )
+            
+            // Draw label
+            val labelText = "${box.cls} ${"%.1f".format(box.conf * 100)}%"
+            paint.textSize = 40f
+            val fm = paint.fontMetrics
+            val textWidth = paint.measureText(labelText)
+            val textHeight = fm.bottom - fm.top
+            val pad = 8f
+            
+            val labelBoxHeight = textHeight + 2 * pad
+            val labelBottom = top
+            val labelTop = labelBottom - labelBoxHeight
+            val labelLeft = left
+            val labelRight = left + textWidth + 2 * pad
+            
+            paint.style = Paint.Style.FILL
+            paint.color = if (labelBackgroundColor != null) {
+                val alpha = (labelBackgroundOpacity * 255).toInt().coerceIn(0, 255)
+                Color.argb(
+                    alpha,
+                    Color.red(labelBackgroundColor!!),
+                    Color.green(labelBackgroundColor!!),
+                    Color.blue(labelBackgroundColor!!)
+                )
+            } else {
+                newColor
+            }
+            
+            canvas.drawRoundRect(
+                RectF(labelLeft, labelTop, labelRight, labelBottom),
+                BOX_CORNER_RADIUS, BOX_CORNER_RADIUS,
+                paint
+            )
+            
+            paint.color = labelTextColor ?: Color.WHITE
+            val centerY = (labelTop + labelBottom) / 2
+            val baseline = centerY - (fm.descent + fm.ascent) / 2
+            canvas.drawText(labelText, labelLeft + pad, baseline, paint)
+        }
     }
 
     // endregion
@@ -552,6 +676,7 @@ class YoloView @JvmOverloads constructor(
             
             // Log.d(TAG, "OverlayView scaling: scale=${scale}, dx=${dx}, dy=${dy}")
 
+            // Make the 'when' expression exhaustive
             when (task) {
                 // ----------------------------------------
                 // DETECT
@@ -731,6 +856,7 @@ class YoloView @JvmOverloads constructor(
                         } else {
                             newColor
                         }
+                        
                         canvas.drawRoundRect(bgRect, BOX_CORNER_RADIUS, BOX_CORNER_RADIUS, paint)
 
                         paint.color = labelTextColor ?: Color.WHITE
@@ -752,65 +878,68 @@ class YoloView @JvmOverloads constructor(
                 // ----------------------------------------
                 YOLOTask.CLASSIFY -> {
                     result.probs?.let { probs ->
-                        // Skip if doesn't meet confidence threshold
-                        if (probs.top1Conf < minConfidence) return
-                        // Skip if not in allowed classes list
-                        if (allowedClasses.isNotEmpty() && !allowedClasses.contains(probs.top1)) return
+                        // Skip if doesn't meet confidence threshold - use run block to allow early exit
+                        run {
+                            // Skip if doesn't meet confidence threshold
+                            if (probs.top1Conf < minConfidence) return@run
+                            // Skip if not in allowed classes list
+                            if (allowedClasses.isNotEmpty() && !allowedClasses.contains(probs.top1)) return@run
 
-                        val alpha = (probs.top1Conf * 255).toInt().coerceIn(0, 255)
-                        
-                        // Use custom colors if available, otherwise use default colors
-                        val baseColor = if (customColors != null && customColors!!.isNotEmpty()) {
-                            // Use modulo to cycle through the custom colors
-                            customColors!![probs.top1Index % customColors!!.size]
-                        } else {
-                            ultralyticsColors[probs.top1Index % ultralyticsColors.size]
-                        }
-                        
-                        val newColor = Color.argb(
-                            alpha,
-                            Color.red(baseColor),
-                            Color.green(baseColor),
-                            Color.blue(baseColor)
-                        )
-
-                        val labelText = "${probs.top1} ${"%.1f".format(probs.top1Conf * 100)}%"
-                        paint.textSize = 60f
-                        val textWidth = paint.measureText(labelText)
-                        val fm = paint.fontMetrics
-                        val textHeight = fm.bottom - fm.top
-                        val pad = 16f
-
-                        // 画面中央
-                        val centerX = vw / 2f
-                        val centerY = vh / 2f
-
-                        val bgLeft   = centerX - (textWidth / 2) - pad
-                        val bgTop    = centerY - (textHeight / 2) - pad
-                        val bgRight  = centerX + (textWidth / 2) + pad
-                        val bgBottom = centerY + (textHeight / 2) + pad
-
-                        paint.style = Paint.Style.FILL
-                        val bgRect = RectF(bgLeft, bgTop, bgRight, bgBottom)
-                        
-                        // Use custom label background color if set, otherwise use detection box color
-                        paint.color = if (labelBackgroundColor != null) {
-                            // Apply the configured opacity
-                            val alpha = (labelBackgroundOpacity * 255).toInt().coerceIn(0, 255)
-                            Color.argb(
+                            val alpha = (probs.top1Conf * 255).toInt().coerceIn(0, 255)
+                            
+                            // Use custom colors if available, otherwise use default colors
+                            val baseColor = if (customColors != null && customColors!!.isNotEmpty()) {
+                                // Use modulo to cycle through the custom colors
+                                customColors!![probs.top1Index % customColors!!.size]
+                            } else {
+                                ultralyticsColors[probs.top1Index % ultralyticsColors.size]
+                            }
+                            
+                            val newColor = Color.argb(
                                 alpha,
-                                Color.red(labelBackgroundColor!!),
-                                Color.green(labelBackgroundColor!!),
-                                Color.blue(labelBackgroundColor!!)
+                                Color.red(baseColor),
+                                Color.green(baseColor),
+                                Color.blue(baseColor)
                             )
-                        } else {
-                            newColor
-                        }
-                        canvas.drawRoundRect(bgRect, 20f, 20f, paint)
 
-                        paint.color = labelTextColor ?: Color.WHITE
-                        val baseline = centerY - (fm.descent + fm.ascent)/2
-                        canvas.drawText(labelText, centerX - (textWidth / 2), baseline, paint)
+                            val labelText = "${probs.top1} ${"%.1f".format(probs.top1Conf * 100)}%"
+                            paint.textSize = 60f
+                            val textWidth = paint.measureText(labelText)
+                            val fm = paint.fontMetrics
+                            val textHeight = fm.bottom - fm.top
+                            val pad = 16f
+
+                            // 画面中央
+                            val centerX = vw / 2f
+                            val centerY = vh / 2f
+
+                            val bgLeft   = centerX - (textWidth / 2) - pad
+                            val bgTop    = centerY - (textHeight / 2) - pad
+                            val bgRight  = centerX + (textWidth / 2) + pad
+                            val bgBottom = centerY + (textHeight / 2) + pad
+
+                            paint.style = Paint.Style.FILL
+                            val bgRect = RectF(bgLeft, bgTop, bgRight, bgBottom)
+                            
+                            // Use custom label background color if set, otherwise use detection box color
+                            paint.color = if (labelBackgroundColor != null) {
+                                // Apply the configured opacity
+                                val alpha = (labelBackgroundOpacity * 255).toInt().coerceIn(0, 255)
+                                Color.argb(
+                                    alpha,
+                                    Color.red(labelBackgroundColor!!),
+                                    Color.green(labelBackgroundColor!!),
+                                    Color.blue(labelBackgroundColor!!)
+                                )
+                            } else {
+                                newColor
+                            }
+                            canvas.drawRoundRect(bgRect, 20f, 20f, paint)
+
+                            paint.color = labelTextColor ?: Color.WHITE
+                            val baseline = centerY - (fm.descent + fm.ascent)/2
+                            canvas.drawText(labelText, centerX - (textWidth / 2), baseline, paint)
+                        }
                     }
                 }
                 // ----------------------------------------
@@ -1037,86 +1166,8 @@ class YoloView @JvmOverloads constructor(
             
             // Draw boxes and labels only if showBoxes is true
             if (showBoxes) {
-                // For each box in the result, draw the rectangle and label
-                for (box in result.boxes) {
-                    // Apply filtering
-                    if (box.conf < minConfidence) continue
-                    if (allowedClasses.isNotEmpty() && !allowedClasses.contains(box.cls)) continue
-                    
-                    // Get the color for this detection
-                    val alpha = (box.conf * 255).toInt().coerceIn(0, 255)
-                    val baseColor = if (customColors != null && customColors!!.isNotEmpty()) {
-                        customColors!![box.index % customColors!!.size]
-                    } else {
-                        ultralyticsColors[box.index % ultralyticsColors.size]
-                    }
-                    
-                    val newColor = if (applyConfidenceAlpha) {
-                        Color.argb(
-                            alpha,
-                            Color.red(baseColor),
-                            Color.green(baseColor),
-                            Color.blue(baseColor)
-                        )
-                    } else {
-                        baseColor
-                    }
-                    
-                    // Calculate box coordinates for this bitmap
-                    val left   = box.xywh.left   * scale + dx
-                    val top    = box.xywh.top    * scale + dy
-                    val right  = box.xywh.right  * scale + dx
-                    val bottom = box.xywh.bottom * scale + dy
-                    
-                    // Draw the bounding box
-                    drawPaint.color = newColor
-                    drawPaint.style = Paint.Style.STROKE
-                    drawPaint.strokeWidth = BOX_LINE_WIDTH
-                    canvas.drawRoundRect(
-                        left, top, right, bottom,
-                        BOX_CORNER_RADIUS, BOX_CORNER_RADIUS,
-                        drawPaint
-                    )
-                    
-                    // Draw the label text and background
-                    val labelText = "${box.cls} ${"%.1f".format(box.conf * 100)}%"
-                    drawPaint.textSize = 40f
-                    val fm = drawPaint.fontMetrics
-                    val textWidth = drawPaint.measureText(labelText)
-                    val textHeight = fm.bottom - fm.top
-                    val pad = 8f
-                    
-                    val labelBoxHeight = textHeight + 2 * pad
-                    val labelBottom = top
-                    val labelTop = labelBottom - labelBoxHeight
-                    val labelLeft = left
-                    val labelRight = left + textWidth + 2 * pad
-                    
-                    // Draw label background
-                    drawPaint.style = Paint.Style.FILL
-                    drawPaint.color = if (labelBackgroundColor != null) {
-                        val alpha = (labelBackgroundOpacity * 255).toInt().coerceIn(0, 255)
-                        Color.argb(
-                            alpha,
-                            Color.red(labelBackgroundColor!!),
-                            Color.green(labelBackgroundColor!!),
-                            Color.blue(labelBackgroundColor!!)
-                        )
-                    } else {
-                        newColor
-                    }
-                    canvas.drawRoundRect(
-                        RectF(labelLeft, labelTop, labelRight, labelBottom),
-                        BOX_CORNER_RADIUS, BOX_CORNER_RADIUS,
-                        drawPaint
-                    )
-                    
-                    // Draw label text
-                    drawPaint.color = labelTextColor ?: Color.WHITE
-                    val centerY = (labelTop + labelBottom) / 2
-                    val baseline = centerY - (fm.descent + fm.ascent) / 2
-                    canvas.drawText(labelText, labelLeft + pad, baseline, drawPaint)
-                }
+                // Use the shared drawing function
+                drawDetectionsOnBitmap(canvas, resultBitmap.width, resultBitmap.height)
             }
         }
         
@@ -1135,24 +1186,142 @@ class YoloView @JvmOverloads constructor(
     /**
      * Starts recording video of the camera feed with detection overlay
      * 
-     * @param outputPath Optional path where the video should be saved. If null, a default path will be used.
+     * @param outputPath Path where the video should be saved. If null, a default path will be used.
      * @return true if recording started successfully, false otherwise
      */
     fun startRecording(outputPath: String?): Boolean {
-        // For now, just return success - this is a placeholder implementation
-        Log.d(TAG, "Started recording with output path: $outputPath")
-        return true
+        // Get viewport dimensions
+        val width = previewView.width
+        val height = previewView.height
+        
+        return videoRecorder.startRecording(width, height, outputPath)
     }
     
     /**
      * Stops the current video recording
      * 
-     * @return Path to the saved video file
+     * @return Path to the saved video file or null if recording failed or file doesn't exist
      */
-    fun stopRecording(): String {
-        // For now, return a dummy path - this is a placeholder implementation
-        val dummyPath = "/sdcard/Download/yolo_recording.mp4"
-        Log.d(TAG, "Stopped recording, saved to: $dummyPath")
-        return dummyPath
+    fun stopRecording(): String? {
+        try {
+            val recordingPath = videoRecorder.stopRecording()
+            Log.d(TAG, "Video recording stopped, path: $recordingPath")
+            
+            // Verify the file actually exists
+            if (recordingPath != null) {
+                val videoFile = java.io.File(recordingPath)
+                if (videoFile.exists() && videoFile.length() > 0) {
+                    Log.d(TAG, "Verified video file exists at path: $recordingPath with size: ${videoFile.length()} bytes")
+                    return recordingPath
+                } else {
+                    Log.e(TAG, "Video file doesn't exist or is empty at path: $recordingPath")
+                    return null
+                }
+            }
+            return null
+        } catch (e: Exception) {
+            Log.e(TAG, "Error stopping video recording", e)
+            return null
+        }
+    }
+
+    /**
+     * Releases the predictor resources
+     */
+    fun releasePredictor() {
+        try {
+            val predictorRef = predictor
+            if (predictorRef != null) {
+                try {
+                    predictorRef.close()
+                    Log.d(TAG, "Predictor resources released")
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error closing predictor", e)
+                }
+                predictor = null
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error releasing predictor resources", e)
+        }
+    }
+
+    /**
+     * Disposes all resources used by the YoloView
+     * This should be called when the view is no longer needed
+     */
+    fun dispose() {
+        Log.d(TAG, "Disposing YoloView resources")
+        
+        try {
+            // Stop any active recording
+            try {
+                if (videoRecorder.isRecording()) {
+                    videoRecorder.stopRecording()
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error stopping recording during dispose", e)
+            }
+            
+            // Clean up predictor resources
+            try {
+                releasePredictor()
+            } catch (e: Exception) {
+                Log.e(TAG, "Error releasing predictor during dispose", e)
+            }
+            
+            // Release camera resources
+            try {
+                val cameraProviderFuture = ProcessCameraProvider.getInstance(context)
+                val cameraProvider = cameraProviderFuture.get()
+                cameraProvider.unbindAll()
+            } catch (e: Exception) {
+                Log.e(TAG, "Error releasing camera during dispose", e)
+            }
+            
+            // Remove callbacks
+            inferenceCallback = null
+            modelLoadCallback = null
+            cameraCreatedCallback = null
+            
+            // Clear view
+            try {
+                removeAllViews()
+            } catch (e: Exception) {
+                Log.e(TAG, "Error clearing views during dispose", e)
+            }
+            
+            Log.d(TAG, "YoloView resources disposed")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error during YoloView dispose", e)
+        }
+    }
+
+    /**
+     * Pauses or resumes live predictions. When paused, the camera feed continues
+     * but no inference is performed, saving CPU/GPU resources.
+     * 
+     * @param pause True to pause predictions, false to resume
+     * @return The new pause state
+     */
+    fun pauseLivePrediction(pause: Boolean): Boolean {
+        isPredictionPaused = pause
+        Log.d(TAG, "Live predictions ${if (pause) "paused" else "resumed"}")
+        return isPredictionPaused
+    }
+    
+    /**
+     * Toggles the prediction pause state
+     * 
+     * @return The new pause state (true if now paused)
+     */
+    fun togglePredictionPause(): Boolean {
+        return pauseLivePrediction(!isPredictionPaused)
+    }
+    
+    /**
+     * Returns whether predictions are currently paused
+     */
+    fun isPredictionPaused(): Boolean {
+        return isPredictionPaused
     }
 }

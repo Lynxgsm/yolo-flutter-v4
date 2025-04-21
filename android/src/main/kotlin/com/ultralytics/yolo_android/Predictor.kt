@@ -15,9 +15,14 @@ interface Predictor {
      */
     fun predict(bitmap: Bitmap, origWidth: Int, origHeight: Int, rotateForCamera: Boolean = false): YOLOResult
     
-    abstract fun setIouThreshold(iou: Double)
-    abstract fun setConfidenceThreshold(conf: Double)
-    abstract fun setNumItemsThreshold(progress: Int)
+    fun setIouThreshold(iou: Float)
+    fun setConfidenceThreshold(conf: Float)
+    fun setNumItemsThreshold(progress: Int)
+    
+    /**
+     * Release any resources used by the predictor
+     */
+    fun close()
 
     var labels: List<String>
     var isUpdating: Boolean
@@ -51,15 +56,28 @@ abstract class BasePredictor : Predictor {
         t4 = 0.05 * ((now - t3) / 1e9) + 0.95 * t4
         t3 = now
     }
-    override fun setIouThreshold(iou: Double) {
-
+    
+    override fun setIouThreshold(iou: Float) {
+        IOU_THRESHOLD = iou
     }
 
-    override fun setConfidenceThreshold(conf: Double) {
-
+    override fun setConfidenceThreshold(conf: Float) {
+        CONFIDENCE_THRESHOLD = conf
     }
 
     override fun setNumItemsThreshold(progress: Int) {
-
+        // Default implementation does nothing
+    }
+    
+    /**
+     * Release resources used by the predictor
+     */
+    override fun close() {
+        if (this::interpreter.isInitialized) {
+            interpreter.close()
+        }
+        pendingBitmapFrame?.recycle()
+        pendingBitmapFrame = null
+        transformationMatrix = null
     }
 }

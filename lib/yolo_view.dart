@@ -250,7 +250,8 @@ class YoloViewController {
   ///
   /// @throws [PlatformNotSupportedException] if called on non-Android platform
   /// @throws [RecordingException] if there's an error stopping the recording
-  Future<String> stopRecording() async {
+  /// Returns null if recording couldn't be saved properly.
+  Future<String?> stopRecording() async {
     if (!Platform.isAndroid) {
       throw PlatformNotSupportedException(
           'Video recording is only supported on Android');
@@ -264,6 +265,9 @@ class YoloViewController {
       try {
         final result = await _methodChannel!.invokeMethod('stopRecording');
         _isRecording = false;
+        if (result == null) {
+          return null;
+        }
         return result as String;
       } on PlatformException catch (e) {
         throw RecordingException('Failed to stop recording: ${e.message}');
@@ -306,6 +310,93 @@ class YoloViewController {
     } else {
       throw CaptureException('Method channel not initialized');
     }
+  }
+
+  /// Pauses or resumes live predictions. When paused, the camera feed continues
+  /// but no inference is performed, saving CPU/GPU resources.
+  ///
+  /// @param pause True to pause predictions, false to resume
+  /// @return The new pause state
+  Future<bool> pauseLivePrediction(bool pause) async {
+    if (_methodChannel != null) {
+      try {
+        final result =
+            await _methodChannel!.invokeMethod('pauseLivePrediction', {
+          'pause': pause,
+        });
+        return result ?? pause;
+      } catch (e) {
+        print('Error changing prediction pause state: $e');
+        return pause;
+      }
+    } else {
+      print('Warning: Method channel not initialized yet');
+      return pause;
+    }
+  }
+
+  /// Toggles the prediction pause state
+  ///
+  /// @return The new pause state (true if now paused)
+  Future<bool> togglePredictionPause() async {
+    if (_methodChannel != null) {
+      try {
+        final result =
+            await _methodChannel!.invokeMethod('togglePredictionPause');
+        return result ?? false;
+      } catch (e) {
+        print('Error toggling prediction pause state: $e');
+        return false;
+      }
+    } else {
+      print('Warning: Method channel not initialized yet');
+      return false;
+    }
+  }
+
+  /// Checks if predictions are currently paused
+  ///
+  /// @return True if predictions are paused, false otherwise
+  Future<bool> isPredictionPaused() async {
+    if (_methodChannel != null) {
+      try {
+        final result = await _methodChannel!.invokeMethod('isPredictionPaused');
+        return result ?? false;
+      } catch (e) {
+        print('Error checking prediction pause state: $e');
+        return false;
+      }
+    } else {
+      print('Warning: Method channel not initialized yet');
+      return false;
+    }
+  }
+
+  /// Disposes the controller and releases any resources.
+  ///
+  /// This should be called when the controller is no longer needed to ensure
+  /// proper cleanup of resources.
+  Future<void> dispose() async {
+    // Stop any active recording first
+    if (_isRecording && Platform.isAndroid) {
+      try {
+        await stopRecording();
+      } catch (e) {
+        print('Error stopping recording during dispose: $e');
+      }
+    }
+
+    // Invoke native dispose if available
+    if (_methodChannel != null) {
+      try {
+        await _methodChannel!.invokeMethod('dispose');
+      } catch (e) {
+        print('Error disposing native resources: $e');
+      }
+    }
+
+    // Clear references
+    _methodChannel = null;
   }
 
   /// Internal key used by YoloView

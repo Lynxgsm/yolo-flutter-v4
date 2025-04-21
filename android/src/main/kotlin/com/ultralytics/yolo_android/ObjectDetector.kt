@@ -38,6 +38,8 @@ class ObjectDetector(
     private lateinit var imageProcessorCamera: ImageProcessor
     private lateinit var imageProcessorSingleImage: ImageProcessor
 
+    // Max number of detections to return
+    private var numItemsThreshold = 30
 
 //    companion object {
 //
@@ -298,18 +300,41 @@ class ObjectDetector(
     // しきい値など（TFLiteDetector でいう setConfidenceThreshold, setIouThreshold ...）
     private var confidenceThreshold = 0.25f
     private var iouThreshold = 0.45f
-    private var numItemsThreshold = 30
 
-    fun setConfidenceThreshold(conf: Float) {
-        confidenceThreshold = conf
+    override fun setConfidenceThreshold(conf: Float) {
+        CONFIDENCE_THRESHOLD = conf
+        Log.d(TAG, "Confidence threshold set to $conf")
     }
 
-    fun setIouThreshold(iou: Float) {
-        iouThreshold = iou
+    override fun setIouThreshold(iou: Float) {
+        IOU_THRESHOLD = iou
+        Log.d(TAG, "IOU threshold set to $iou")
     }
 
-    override fun setNumItemsThreshold(n: Int) {
-        numItemsThreshold = n
+    override fun setNumItemsThreshold(progress: Int) {
+        // Implementation for object detector specific threshold
+        numItemsThreshold = progress
+        Log.d(TAG, "Num items threshold set to $progress")
+    }
+    
+    /**
+     * Clean up all resources used by the object detector
+     */
+    override fun close() {
+        try {
+            // Call parent close method
+            super.close()
+            
+            // Clean up detector-specific resources
+            scaledBitmap.recycle()
+            intValues = IntArray(0)
+            rawOutput = emptyArray()
+            predictions = emptyArray()
+            
+            Log.d(TAG, "ObjectDetector resources released")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error releasing ObjectDetector resources", e)
+        }
     }
 
     // JNI経由の後処理
@@ -329,8 +354,8 @@ class ObjectDetector(
         init {
             System.loadLibrary("ultralytics")
         }
-        private const val INPUT_MEAN = 0f
-        private const val INPUT_STANDARD_DEVIATION = 255f
+        private const val INPUT_MEAN = 0.0f
+        private const val INPUT_STANDARD_DEVIATION = 255.0f
         private val INPUT_IMAGE_TYPE = DataType.FLOAT32
         private val OUTPUT_IMAGE_TYPE = DataType.FLOAT32
         private const val CONFIDENCE_THRESHOLD = 0.25F
