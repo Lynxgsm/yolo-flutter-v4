@@ -11,15 +11,24 @@ import 'package:ultralytics_yolo_android/yolo_result.dart';
 /// Used to control filtering settings for YoloView
 class YoloViewController {
   final GlobalKey<_YoloViewState> _key = GlobalKey<_YoloViewState>();
+  MethodChannel? _methodChannel;
 
   /// Set allowed classes for filtering detections
   ///
   /// Pass an empty list to show all classes.
   Future<void> setAllowedClasses(List<String> classes) async {
-    final state = _key.currentState;
-    print('setAllowedClasses: $classes');
-    if (state != null) {
-      await state.setAllowedClasses(classes);
+    print(
+        'YoloViewController.setAllowedClasses: $classes, channel: $_methodChannel');
+    if (_methodChannel != null) {
+      try {
+        await _methodChannel!.invokeMethod('setAllowedClasses', {
+          'classes': classes,
+        });
+      } catch (e) {
+        print('Error setting allowed classes: $e');
+      }
+    } else {
+      print('Warning: Method channel not initialized yet');
     }
   }
 
@@ -27,14 +36,29 @@ class YoloViewController {
   ///
   /// Value should be between 0.0 and 1.0
   Future<void> setMinConfidence(double confidence) async {
-    final state = _key.currentState;
-    if (state != null) {
-      await state.setMinConfidence(confidence);
+    print(
+        'YoloViewController.setMinConfidence: $confidence, channel: $_methodChannel');
+    if (_methodChannel != null) {
+      try {
+        await _methodChannel!.invokeMethod('setMinConfidence', {
+          'confidence': confidence,
+        });
+      } catch (e) {
+        print('Error setting min confidence: $e');
+      }
+    } else {
+      print('Warning: Method channel not initialized yet');
     }
   }
 
   /// Internal key used by YoloView
   GlobalKey<_YoloViewState> get key => _key;
+
+  /// Internal method to set the method channel
+  void _setMethodChannel(MethodChannel channel) {
+    _methodChannel = channel;
+    print('YoloViewController: Method channel set to $_methodChannel');
+  }
 }
 
 /// A Flutter widget that displays a platform view for YOLO object detection.
@@ -150,9 +174,12 @@ class _YoloViewState extends State<YoloView> {
   /// Pass an empty list to show all classes.
   Future<void> setAllowedClasses(List<String> classes) async {
     try {
-      await _methodChannel.invokeMethod('setAllowedClasses', {
+      print(
+          '_YoloViewState.setAllowedClasses: $classes using channel $_methodChannel');
+      final result = await _methodChannel.invokeMethod('setAllowedClasses', {
         'classes': classes,
       });
+      print('setAllowedClasses result: $result');
     } catch (e) {
       print('Error setting allowed classes: $e');
     }
@@ -230,5 +257,13 @@ class _YoloViewState extends State<YoloView> {
     final channelName = 'com.ultralytics.yolo_android/YoloMethodChannel_$id';
     _methodChannel = MethodChannel(channelName);
     _methodChannel.setMethodCallHandler(_handleMethodCall);
+
+    // If a controller was provided, update its method channel
+    if (widget.controller != null) {
+      widget.controller!._setMethodChannel(_methodChannel);
+    }
+
+    print(
+        'YoloView: Platform view created with ID $id, channel: $_methodChannel');
   }
 }

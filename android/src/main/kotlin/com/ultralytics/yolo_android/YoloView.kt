@@ -483,6 +483,8 @@ class YoloView @JvmOverloads constructor(
                 // ----------------------------------------
                 YOLOTask.DETECT -> {
                     // Log.d(TAG, "Drawing DETECT boxes: ${result.boxes.size}")
+                    Log.d(TAG, "Allowed classes: $allowedClasses")
+                    Log.d(TAG, "Min confidence: $minConfidence")
                     for (box in result.boxes) {
                         // Apply filtering - skip this detection if it doesn't meet criteria
                         if (box.conf < minConfidence) continue
