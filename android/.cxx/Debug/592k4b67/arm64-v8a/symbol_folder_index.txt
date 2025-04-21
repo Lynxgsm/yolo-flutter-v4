@@ -1,1 +1,0 @@
-/Users/geko/work/testingyolo/build/ultralytics_yolo/intermediates/cxx/Debug/592k4b67/obj/arm64-v8a

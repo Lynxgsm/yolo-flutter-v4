@@ -55,3 +55,6 @@ app.*.map.json
 
 # Coverage
 /coverage/
+
+# Android
+android/.cxx/

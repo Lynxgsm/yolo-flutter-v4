@@ -1,3 +1,0 @@
-/Users/geko/.pub-cache/hosted/pub.dev/ultralytics_yolo-0.0.4/android/.cxx/Debug/1x53v5c6/x86_64/CMakeFiles/ultralytics.dir
-/Users/geko/.pub-cache/hosted/pub.dev/ultralytics_yolo-0.0.4/android/.cxx/Debug/1x53v5c6/x86_64/CMakeFiles/edit_cache.dir
-/Users/geko/.pub-cache/hosted/pub.dev/ultralytics_yolo-0.0.4/android/.cxx/Debug/1x53v5c6/x86_64/CMakeFiles/rebuild_cache.dir

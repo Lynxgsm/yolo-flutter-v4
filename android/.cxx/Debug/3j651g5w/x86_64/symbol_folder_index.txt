@@ -1,1 +1,0 @@
-/Users/geko/work/testingyolo/build/ultralytics_yolo/intermediates/cxx/Debug/3j651g5w/obj/x86_64
