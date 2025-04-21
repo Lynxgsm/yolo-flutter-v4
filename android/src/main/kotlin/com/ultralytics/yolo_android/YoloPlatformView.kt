@@ -30,6 +30,35 @@ class YoloPlatformView(
         // Create a unique channel for this view instance
         methodChannel = MethodChannel(messenger, "com.ultralytics.yolo_android/YoloMethodChannel_$viewId")
         
+        // Set up method channel handler
+        methodChannel.setMethodCallHandler { call, result ->
+            when (call.method) {
+                "setAllowedClasses" -> {
+                    try {
+                        val classes = call.argument<List<String>>("classes") ?: listOf()
+                        yoloView.setAllowedClasses(classes)
+                        result.success(null)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error setting allowed classes: ${e.message}", e)
+                        result.error("SET_ALLOWED_CLASSES_ERROR", e.message, null)
+                    }
+                }
+                "setMinConfidence" -> {
+                    try {
+                        val confidence = call.argument<Double>("confidence") ?: 0.25
+                        yoloView.setMinConfidence(confidence.toFloat())
+                        result.success(null)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error setting min confidence: ${e.message}", e)
+                        result.error("SET_MIN_CONFIDENCE_ERROR", e.message, null)
+                    }
+                }
+                else -> {
+                    result.notImplemented()
+                }
+            }
+        }
+        
         // Main thread handler
         val mainHandler = Handler(Looper.getMainLooper())
         

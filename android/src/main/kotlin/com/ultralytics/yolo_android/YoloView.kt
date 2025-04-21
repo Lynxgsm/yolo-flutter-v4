@@ -160,6 +160,10 @@ class YoloView @JvmOverloads constructor(
     private var iouThreshold = 0.45
     private var numItemsThreshold = 30
 
+    // Filter settings
+    private var allowedClasses = listOf<String>() // Empty means show all
+    private var minConfidence = 0.25f
+
     // Flag to control whether to show detection boxes
     private var showBoxes: Boolean = true
     
@@ -170,6 +174,22 @@ class YoloView @JvmOverloads constructor(
         this.showBoxes = show
         // Update overlay visibility immediately
         overlayView.visibility = if (show) View.VISIBLE else View.INVISIBLE
+    }
+
+    /**
+     * Set allowed classes to display (empty list means show all)
+     */
+    fun setAllowedClasses(classes: List<String>) {
+        this.allowedClasses = classes
+        overlayView.invalidate() // Redraw with new filter
+    }
+
+    /**
+     * Set minimum confidence threshold for displayed detections
+     */
+    fun setMinConfidence(confidence: Float) {
+        this.minConfidence = confidence
+        overlayView.invalidate() // Redraw with new filter
     }
 
     init {
@@ -464,6 +484,10 @@ class YoloView @JvmOverloads constructor(
                 YOLOTask.DETECT -> {
                     // Log.d(TAG, "Drawing DETECT boxes: ${result.boxes.size}")
                     for (box in result.boxes) {
+                        // Apply filtering - skip this detection if it doesn't meet criteria
+                        if (box.conf < minConfidence) continue
+                        if (allowedClasses.isNotEmpty() && !allowedClasses.contains(box.cls)) continue
+
                         // confidence に応じてアルファ調整
                         val alpha = (box.conf * 255).toInt().coerceIn(0, 255)
                         val baseColor = ultralyticsColors[box.index % ultralyticsColors.size]
@@ -536,6 +560,10 @@ class YoloView @JvmOverloads constructor(
                 YOLOTask.SEGMENT -> {
                     // バウンディングボックス & ラベル
                     for (box in result.boxes) {
+                        // Apply filtering - skip this detection if it doesn't meet criteria
+                        if (box.conf < minConfidence) continue
+                        if (allowedClasses.isNotEmpty() && !allowedClasses.contains(box.cls)) continue
+
                         val alpha = (box.conf * 255).toInt().coerceIn(0, 255)
                         val baseColor = ultralyticsColors[box.index % ultralyticsColors.size]
                         val newColor = Color.argb(
@@ -598,6 +626,11 @@ class YoloView @JvmOverloads constructor(
                 // ----------------------------------------
                 YOLOTask.CLASSIFY -> {
                     result.probs?.let { probs ->
+                        // Skip if doesn't meet confidence threshold
+                        if (probs.top1Conf < minConfidence) return
+                        // Skip if not in allowed classes list
+                        if (allowedClasses.isNotEmpty() && !allowedClasses.contains(probs.top1)) return
+
                         val alpha = (probs.top1Conf * 255).toInt().coerceIn(0, 255)
                         // top1Index で色を選択
                         val baseColor = ultralyticsColors[probs.top1Index % ultralyticsColors.size]
@@ -640,6 +673,10 @@ class YoloView @JvmOverloads constructor(
                 YOLOTask.POSE -> {
                     // バウンディングボックス
                     for (box in result.boxes) {
+                        // Apply filtering - skip this detection if it doesn't meet criteria
+                        if (box.conf < minConfidence) continue
+                        if (allowedClasses.isNotEmpty() && !allowedClasses.contains(box.cls)) continue
+
                         val alpha = (box.conf * 255).toInt().coerceIn(0, 255)
                         val baseColor = ultralyticsColors[box.index % ultralyticsColors.size]
                         val newColor = Color.argb(
@@ -718,6 +755,10 @@ class YoloView @JvmOverloads constructor(
                 // ----------------------------------------
                 YOLOTask.OBB -> {
                     for (obbRes in result.obb) {
+                        // Apply filtering - skip this detection if it doesn't meet criteria
+                        if (obbRes.confidence < minConfidence) continue
+                        if (allowedClasses.isNotEmpty() && !allowedClasses.contains(obbRes.cls)) continue
+
                         val alpha = (obbRes.confidence * 255).toInt().coerceIn(0, 255)
                         val baseColor = ultralyticsColors[obbRes.index % ultralyticsColors.size]
                         val newColor = Color.argb(
