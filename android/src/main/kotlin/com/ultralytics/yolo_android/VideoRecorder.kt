@@ -27,6 +27,10 @@ class VideoRecorder(private val context: Context) {
     private var currentRecordingPath: String? = null
     private val isRecording = AtomicBoolean(false)
     
+    // Store the original dimensions
+    private var originalWidth: Int = 0
+    private var originalHeight: Int = 0
+    
     /**
      * Starts recording video of the camera feed
      * 
@@ -42,11 +46,15 @@ class VideoRecorder(private val context: Context) {
         }
         
         try {
+            // Store original dimensions
+            originalWidth = width
+            originalHeight = height
+            
             // Determine final output path
             val finalOutputPath = outputPath ?: createDefaultOutputPath()
             currentRecordingPath = finalOutputPath
             
-            Log.d(TAG, "Starting recording to $finalOutputPath")
+            Log.d(TAG, "Starting recording to $finalOutputPath with dimensions ${width}x${height}")
             
             // Create output directory if needed
             val outputFile = File(finalOutputPath)
@@ -102,18 +110,27 @@ class VideoRecorder(private val context: Context) {
                 MediaRecorder()
             }
             
+            // Determine if we should use landscape or portrait
+            val isLandscape = width > height
+            val recordWidth = if (isLandscape) width else height
+            val recordHeight = if (isLandscape) height else width
+            
+            Log.d(TAG, "Configuring recorder with ${recordWidth}x${recordHeight} (isLandscape=$isLandscape)")
+            
             mediaRecorder?.apply {
                 // Only using SURFACE as video source - no audio source is set (video only recording)
                 setVideoSource(MediaRecorder.VideoSource.SURFACE)
                 setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
                 setVideoEncoder(MediaRecorder.VideoEncoder.H264)
-                setVideoSize(width, height)
+                setVideoSize(recordWidth, recordHeight)
                 setVideoFrameRate(30)
                 setVideoEncodingBitRate(10000000) // 10Mbps
                 setOutputFile(outputPath)
                 
-                // Set orientation hint
-                setOrientationHint(90) // Portrait orientation
+                // Only set orientation hint if needed
+                if (!isLandscape) {
+                    setOrientationHint(90) // Portrait orientation
+                }
                 
                 // Prepare the recorder
                 prepare()
@@ -196,7 +213,7 @@ class VideoRecorder(private val context: Context) {
      * Encodes the current frame to video if recording is active
      * 
      * @param bitmap The frame to encode
-     * @param drawDetections Callback to draw detection overlays on the frame
+     * @param drawDetections Callback to draw detection overlays on the frame (not used, as we only record camera feed)
      */
     fun encodeFrame(bitmap: Bitmap, drawDetections: ((Canvas, Int, Int) -> Unit)?) {
         val surface = recordingSurface
@@ -208,11 +225,19 @@ class VideoRecorder(private val context: Context) {
                 // Clear canvas
                 canvas.drawColor(android.graphics.Color.BLACK)
                 
-                // Draw the bitmap
-                canvas.drawBitmap(bitmap, 0f, 0f, null)
+                // Draw only the bitmap without detection overlays
+                // Check if we need to rotate the bitmap for proper orientation
+                val isLandscape = originalWidth > originalHeight
+                if (isLandscape) {
+                    // Draw directly in landscape mode
+                    canvas.drawBitmap(bitmap, 0f, 0f, null)
+                } else {
+                    // For portrait, we may need to adjust the drawing based on how the bitmap comes in
+                    // Just draw it directly for now, but we may need special handling if it appears rotated
+                    canvas.drawBitmap(bitmap, 0f, 0f, null)
+                }
                 
-                // Draw detection overlays if provided
-                drawDetections?.invoke(canvas, bitmap.width, bitmap.height)
+                // Do NOT call drawDetections here to avoid recording detection overlays
                 
             } finally {
                 surface.unlockCanvasAndPost(canvas)
