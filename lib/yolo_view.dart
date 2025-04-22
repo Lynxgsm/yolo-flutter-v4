@@ -190,6 +190,13 @@ class YoloViewController {
     return <String, dynamic>{};
   }
 
+  /// Checks if video recording is currently in progress
+  ///
+  /// Returns true if recording is active, false otherwise
+  bool isRecording() {
+    return _isRecording;
+  }
+
   /// Starts recording video while performing YOLO predictions.
   ///
   /// This method is only available on Android devices. On other platforms,
