@@ -225,16 +225,35 @@ class VideoRecorder(private val context: Context) {
                 // Clear canvas
                 canvas.drawColor(android.graphics.Color.BLACK)
                 
-                // Draw only the bitmap without detection overlays
-                // Check if we need to rotate the bitmap for proper orientation
+                // Get dimensions
+                val canvasWidth = canvas.width
+                val canvasHeight = canvas.height
+                val bitmapWidth = bitmap.width
+                val bitmapHeight = bitmap.height
+                
+                Log.d(TAG, "Canvas size: ${canvasWidth}x${canvasHeight}, Bitmap size: ${bitmapWidth}x${bitmapHeight}")
+                
+                // Calculate scaling factor to fill the canvas
                 val isLandscape = originalWidth > originalHeight
+                
                 if (isLandscape) {
-                    // Draw directly in landscape mode
-                    canvas.drawBitmap(bitmap, 0f, 0f, null)
+                    // Scale the bitmap to fill the width of the canvas
+                    val scale = canvasWidth.toFloat() / bitmapWidth.toFloat()
+                    val scaledHeight = bitmapHeight * scale
+                    val yOffset = (canvasHeight - scaledHeight) / 2
+                    
+                    // Scale bitmap to fill the canvas width and center it vertically
+                    canvas.scale(scale, scale)
+                    canvas.drawBitmap(bitmap, 0f, yOffset / scale, null)
                 } else {
-                    // For portrait, we may need to adjust the drawing based on how the bitmap comes in
-                    // Just draw it directly for now, but we may need special handling if it appears rotated
-                    canvas.drawBitmap(bitmap, 0f, 0f, null)
+                    // Scale the bitmap to fill the height of the canvas
+                    val scale = canvasHeight.toFloat() / bitmapHeight.toFloat() 
+                    val scaledWidth = bitmapWidth * scale
+                    val xOffset = (canvasWidth - scaledWidth) / 2
+                    
+                    // Scale bitmap to fill the canvas height and center it horizontally
+                    canvas.scale(scale, scale)
+                    canvas.drawBitmap(bitmap, xOffset / scale, 0f, null)
                 }
                 
                 // Do NOT call drawDetections here to avoid recording detection overlays
