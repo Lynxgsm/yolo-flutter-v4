@@ -1262,6 +1262,14 @@ class YoloView @JvmOverloads constructor(
                 Log.e(TAG, "Error stopping recording during dispose", e)
             }
             
+            // Dispose VideoRecorder resources
+            try {
+                videoRecorder.dispose()
+                Log.d(TAG, "VideoRecorder resources disposed")
+            } catch (e: Exception) {
+                Log.e(TAG, "Error disposing VideoRecorder", e)
+            }
+            
             // Clean up predictor resources
             try {
                 releasePredictor()

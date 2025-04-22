@@ -210,6 +210,32 @@ class VideoRecorder(private val context: Context) {
     }
     
     /**
+     * Disposes of the recorder and releases all resources.
+     * Should be called when the application is being closed or when the camera is no longer needed.
+     */
+    fun dispose() {
+        try {
+            Log.d(TAG, "Disposing VideoRecorder")
+            
+            // Stop any active recording
+            if (isRecording.get()) {
+                stopRecording()
+            }
+            
+            // Release recorder resources
+            releaseRecorder()
+            
+            // Clear recording path
+            currentRecordingPath = null
+            
+            Log.d(TAG, "VideoRecorder disposed successfully")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error during VideoRecorder disposal: ${e.message}")
+            e.printStackTrace()
+        }
+    }
+    
+    /**
      * Encodes the current frame to video if recording is active
      * 
      * @param bitmap The frame to encode
