@@ -1,12 +1,10 @@
 // lib/yolo.dart
 
 import 'dart:async';
-import 'dart:typed_data';
 import 'package:flutter/services.dart';
 import 'package:ultralytics_yolo_android/yolo_task.dart';
 import 'package:ultralytics_yolo_android/yolo_exceptions.dart';
 import 'package:ultralytics_yolo_android/yolo_result.dart';
-import 'dart:io' show Platform;
 
 /// Exports all YOLO-related classes and enums
 export 'yolo_task.dart';
