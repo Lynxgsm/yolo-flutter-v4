@@ -40,8 +40,6 @@ flutter:
       android:
         package: com.ultralytics.yolo_android
         pluginClass: YoloPlugin
-      ios:
-        pluginClass: YoloPlugin
 
   # To add assets to your plugin package, add an assets section, like this:
   # assets:
