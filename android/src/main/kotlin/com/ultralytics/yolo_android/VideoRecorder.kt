@@ -84,7 +84,7 @@ class VideoRecorder(private val context: Context) {
     }
     
     /**
-     * Creates a default output path for the recording
+     * Creates  a default output path for the recording
      */
     private fun createDefaultOutputPath(): String {
         val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
@@ -123,8 +123,13 @@ class VideoRecorder(private val context: Context) {
                 setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
                 setVideoEncoder(MediaRecorder.VideoEncoder.H264)
                 setVideoSize(recordWidth, recordHeight)
-                setVideoFrameRate(30)
-                setVideoEncodingBitRate(10000000) // 10Mbps
+                if (Build.MODEL.contains("Pixel 9")) {
+                    setVideoFrameRate(24)
+                    setVideoEncodingBitRate(8000000) // 8Mbps
+                } else {
+                    setVideoFrameRate(30)
+                    setVideoEncodingBitRate(10000000) // 10Mbps
+                }
                 setOutputFile(outputPath)
                 
                 // Only set orientation hint if needed
