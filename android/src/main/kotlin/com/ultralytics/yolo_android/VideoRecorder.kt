@@ -31,6 +31,9 @@ class VideoRecorder(private val context: Context) {
     private var originalWidth: Int = 0
     private var originalHeight: Int = 0
     
+    // Track if any frames have been encoded
+    private var framesEncoded: Int = 0
+    
     /**
      * Starts recording video of the camera feed
      * 
@@ -49,6 +52,9 @@ class VideoRecorder(private val context: Context) {
             // Store original dimensions
             originalWidth = width
             originalHeight = height
+            
+            // Reset frame counter
+            framesEncoded = 0
             
             // Determine final output path
             val finalOutputPath = outputPath ?: createDefaultOutputPath()
@@ -137,6 +143,9 @@ class VideoRecorder(private val context: Context) {
                     setOrientationHint(90) // Portrait orientation
                 }
                 
+                // Set max file size to prevent empty files (100MB)
+                setMaxFileSize(100 * 1024 * 1024)
+                
                 // Prepare the recorder
                 prepare()
                 
@@ -175,9 +184,29 @@ class VideoRecorder(private val context: Context) {
         val savedPath = currentRecordingPath
         
         try {
+            Log.d(TAG, "Stopping recording. Frames encoded: $framesEncoded")
+            
+            // If we haven't encoded any frames, don't try to stop
+            if (framesEncoded == 0) {
+                Log.w(TAG, "No frames were encoded during recording. Releasing without stop()")
+                releaseRecorder()
+                return null
+            }
+            
             mediaRecorder?.apply {
                 stop()
                 Log.d(TAG, "Recording stopped successfully")
+            }
+            
+            // Verify the file exists and has non-zero size
+            val outputFile = File(savedPath)
+            if (outputFile.exists() && outputFile.length() > 0) {
+                Log.d(TAG, "Recording saved: ${outputFile.absolutePath}, size: ${outputFile.length()} bytes")
+            } else {
+                Log.e(TAG, "Recording file is empty or does not exist: ${outputFile.absolutePath}")
+                if (outputFile.exists()) {
+                    Log.e(TAG, "File size: ${outputFile.length()} bytes")
+                }
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error stopping recording: ${e.message}")
@@ -262,7 +291,10 @@ class VideoRecorder(private val context: Context) {
                 val bitmapWidth = bitmap.width
                 val bitmapHeight = bitmap.height
                 
-                Log.d(TAG, "Canvas size: ${canvasWidth}x${canvasHeight}, Bitmap size: ${bitmapWidth}x${bitmapHeight}")
+                // Only log dimensions occasionally
+                if (framesEncoded == 0 || framesEncoded % 100 == 0) {
+                    Log.d(TAG, "Canvas size: ${canvasWidth}x${canvasHeight}, Bitmap size: ${bitmapWidth}x${bitmapHeight}, Frames: $framesEncoded")
+                }
                 
                 // Calculate scaling factor to fill the canvas
                 val isLandscape = originalWidth > originalHeight
@@ -288,6 +320,9 @@ class VideoRecorder(private val context: Context) {
                 }
                 
                 // Do NOT call drawDetections here to avoid recording detection overlays
+                
+                // Increment frame counter
+                framesEncoded++
                 
             } finally {
                 surface.unlockCanvasAndPost(canvas)
