@@ -188,8 +188,22 @@ class YoloPlatformView(
                     try {
                         val outputPath = call.argument<String>("outputPath")
                         Log.d(TAG, "Starting recording with output path: $outputPath")
-                        val success = yoloView.startRecording(outputPath)
-                        result.success(success)
+                        val recordingResult = yoloView.startRecording(outputPath)
+                        
+                        if (recordingResult.first) {
+                            // Recording started successfully
+                            result.success(mapOf(
+                                "success" to true,
+                                "reason" to null
+                            ))
+                        } else {
+                            // Recording failed with reason
+                            Log.w(TAG, "Failed to start recording: ${recordingResult.second}")
+                            result.success(mapOf(
+                                "success" to false,
+                                "reason" to recordingResult.second
+                            ))
+                        }
                     } catch (e: Exception) {
                         Log.e(TAG, "Error starting recording: ${e.message}", e)
                         result.error("START_RECORDING_ERROR", e.message, null)

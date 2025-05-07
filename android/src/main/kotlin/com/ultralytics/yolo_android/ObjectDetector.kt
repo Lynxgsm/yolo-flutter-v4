@@ -284,7 +284,7 @@ class ObjectDetector(
 
         val postEnd = System.nanoTime()
         val totalMs = (postEnd - startTime) / 1_000_000.0
-        Log.d("TAG", "Total time: $totalMs ms")
+        // Log.d("TAG", "Total time: $totalMs ms")
 
         updateTiming()
 

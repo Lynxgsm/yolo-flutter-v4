@@ -499,7 +499,7 @@ class YoloView @JvmOverloads constructor(
                     inferenceResult = result
 
                     // Log
-                    Log.d(TAG, "Inference complete: ${result.boxes.size} boxes detected")
+                    // Log.d(TAG, "Inference complete: ${result.boxes.size} boxes detected")
 
                     // Callback
                     inferenceCallback?.invoke(result)
@@ -507,7 +507,7 @@ class YoloView @JvmOverloads constructor(
                     // Update overlay
                     post {
                         overlayView.invalidate()
-                        Log.d(TAG, "Overlay invalidated for redraw")
+                        // Log.d(TAG, "Overlay invalidated for redraw")
                     }
                 } catch (e: Exception) {
                     Log.e(TAG, "Error during prediction", e)
@@ -1191,9 +1191,9 @@ class YoloView @JvmOverloads constructor(
      * Starts recording video of the camera feed with detection overlay
      * 
      * @param outputPath Path where the video should be saved. If null, a default path will be used.
-     * @return true if recording started successfully, false otherwise
+     * @return Pair of (success boolean, error message or null if successful)
      */
-    fun startRecording(outputPath: String?): Boolean {
+    fun startRecording(outputPath: String?): Pair<Boolean, String?> {
         // Get viewport dimensions
         val width = previewView.width
         val height = previewView.height

@@ -1,12 +1,16 @@
 // lib/yolo_view.dart
 
+import 'dart:async';
+import 'dart:io';
+import 'dart:typed_data';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'dart:io';
-import 'dart:typed_data';
-import 'package:ultralytics_yolo_android/yolo_task.dart';
-import 'package:ultralytics_yolo_android/yolo_result.dart';
+
+import 'yolo_exceptions.dart';
+import 'yolo_result.dart';
+import 'yolo_task.dart';
 
 /// Controller for YoloView
 ///
@@ -205,19 +209,18 @@ class YoloViewController {
   /// [outputPath] is the file path where the video will be saved.
   /// If not provided, a default path will be used.
   ///
-  /// Returns true if recording started successfully, false otherwise.
+  /// Returns a [RecordingResult] with success status and error reason if unsuccessful.
   ///
   /// @throws [PlatformNotSupportedException] if called on non-Android platform
   /// @throws [ModelNotLoadedException] if the model has not been loaded
-  /// @throws [RecordingException] if there's an error starting the recording
-  Future<bool> startRecording({String? outputPath}) async {
+  Future<RecordingResult> startRecording({String? outputPath}) async {
     if (!Platform.isAndroid) {
       throw PlatformNotSupportedException(
           'Video recording is only supported on Android');
     }
 
     if (_isRecording) {
-      return true; // Already recording
+      return RecordingResult.failure('Recording already in progress');
     }
 
     if (_methodChannel != null) {
@@ -226,25 +229,43 @@ class YoloViewController {
           'outputPath': outputPath,
         });
 
-        _isRecording = result == true;
-        return _isRecording;
+        if (result is Map) {
+          final success = result['success'] as bool;
+          final reason = result['reason'] as String?;
+
+          if (success) {
+            _isRecording = true;
+            return RecordingResult.success();
+          } else {
+            return RecordingResult.failure(
+                reason ?? 'Unknown error starting recording');
+          }
+        } else {
+          // Handle legacy response (boolean)
+          final success = result == true;
+          _isRecording = success;
+          return success
+              ? RecordingResult.success()
+              : RecordingResult.failure('Failed to start recording');
+        }
       } on PlatformException catch (e) {
         if (e.code == 'MODEL_NOT_LOADED') {
           throw ModelNotLoadedException(
               'Model has not been loaded. Call loadModel() first.');
         } else if (e.code == 'CAMERA_PERMISSION_DENIED') {
-          throw RecordingException('Camera permission denied');
+          return RecordingResult.failure('Camera permission denied');
         } else if (e.code == 'STORAGE_PERMISSION_DENIED') {
-          throw RecordingException('Storage permission denied');
+          return RecordingResult.failure('Storage permission denied');
         } else {
-          throw RecordingException('Failed to start recording: ${e.message}');
+          return RecordingResult.failure(
+              'Failed to start recording: ${e.message}');
         }
       } catch (e) {
-        throw RecordingException('Unknown error starting recording: $e');
+        return RecordingResult.failure('Unknown error starting recording: $e');
       }
     } else {
       print('Warning: Method channel not initialized yet');
-      return false;
+      return RecordingResult.failure('Method channel not initialized');
     }
   }
 
@@ -608,8 +629,6 @@ class _YoloViewState extends State<YoloView> {
 
   // Handle incoming method calls from the native side
   Future<dynamic> _handleMethodCall(MethodCall call) async {
-    print(
-        'YoloView received method call: ${call.method}, args: ${call.arguments}');
     switch (call.method) {
       case 'onDetectionResult':
         // Convert results to a list of YOLOResult objects and call the callback

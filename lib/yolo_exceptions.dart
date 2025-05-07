@@ -13,6 +13,28 @@ class YoloException implements Exception {
   String toString() => 'YoloException: $message';
 }
 
+/// Represents the result of a recording operation.
+///
+/// This class is used to return both the success status and an error reason
+/// when starting a recording session.
+class RecordingResult {
+  /// Whether the recording operation was successful
+  final bool success;
+
+  /// The reason for failure if [success] is false, or null if successful
+  final String? reason;
+
+  /// Creates a new recording result
+  RecordingResult({required this.success, this.reason});
+
+  /// Creates a successful recording result
+  factory RecordingResult.success() => RecordingResult(success: true);
+
+  /// Creates a failed recording result with the given reason
+  factory RecordingResult.failure(String reason) =>
+      RecordingResult(success: false, reason: reason);
+}
+
 /// Exception thrown when a model fails to load.
 ///
 /// This exception is thrown by [YOLO.loadModel] when the model file cannot be found,

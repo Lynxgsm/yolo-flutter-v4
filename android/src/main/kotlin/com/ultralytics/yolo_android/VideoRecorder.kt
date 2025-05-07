@@ -40,12 +40,11 @@ class VideoRecorder(private val context: Context) {
      * @param width Width of the video
      * @param height Height of the video
      * @param outputPath Optional custom output path
-     * @return true if recording started successfully, false otherwise
+     * @return Pair of (success boolean, error message or null if successful)
      */
-    fun startRecording(width: Int, height: Int, outputPath: String?): Boolean {
+    fun startRecording(width: Int, height: Int, outputPath: String?): Pair<Boolean, String?> {
         if (isRecording.get()) {
-            Log.w(TAG, "Recording already in progress")
-            return false
+            return Pair(false, "Recording already in progress")
         }
         
         try {
@@ -67,25 +66,24 @@ class VideoRecorder(private val context: Context) {
             val outputDir = outputFile.parentFile
             if (outputDir != null && !outputDir.exists()) {
                 if (!outputDir.mkdirs()) {
-                    Log.e(TAG, "Failed to create output directory")
-                    return false
+                    return Pair(false, "Failed to create output directory")
                 }
             }
             
             // Initialize media recorder
-            if (!initializeMediaRecorder(width, height, finalOutputPath)) {
-                Log.e(TAG, "Failed to initialize media recorder")
-                return false
+            val initResult = initializeMediaRecorder(width, height, finalOutputPath)
+            if (!initResult.first) {
+                return Pair(false, initResult.second)
             }
             
             isRecording.set(true)
-            return true
+            return Pair(true, null)
             
         } catch (e: Exception) {
             Log.e(TAG, "Failed to start recording: ${e.message}")
             e.printStackTrace()
             releaseRecorder()
-            return false
+            return Pair(false, "Failed to start recording: ${e.message}")
         }
     }
     
@@ -103,9 +101,9 @@ class VideoRecorder(private val context: Context) {
     
     /**
      * Initialize the MediaRecorder with the appropriate settings
-     * @return true if initialization was successful, false otherwise
+     * @return Pair of (success boolean, error message or null if successful)
      */
-    private fun initializeMediaRecorder(width: Int, height: Int, outputPath: String): Boolean {
+    private fun initializeMediaRecorder(width: Int, height: Int, outputPath: String): Pair<Boolean, String?> {
         releaseRecorder() // Release any existing recorder
         
         try {
@@ -129,13 +127,9 @@ class VideoRecorder(private val context: Context) {
                 setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
                 setVideoEncoder(MediaRecorder.VideoEncoder.H264)
                 setVideoSize(recordWidth, recordHeight)
-                if (Build.MODEL.contains("Pixel 9")) {
-                    setVideoFrameRate(24)
-                    setVideoEncodingBitRate(8000000) // 8Mbps
-                } else {
-                    setVideoFrameRate(30)
-                    setVideoEncodingBitRate(10000000) // 10Mbps
-                }
+                setVideoFrameRate(30)
+                setVideoEncodingBitRate(10000000) // 10Mbps
+                
                 setOutputFile(outputPath)
                 
                 // Only set orientation hint if needed
@@ -156,17 +150,16 @@ class VideoRecorder(private val context: Context) {
                 start()
                 
                 if (recordingSurface == null) {
-                    Log.e(TAG, "Failed to get recording surface after prepare")
-                    return false
+                    return Pair(false, "Failed to get recording surface after prepare")
                 }
             }
             
-            return true
+            return Pair(true, null)
         } catch (e: Exception) {
             Log.e(TAG, "Error initializing media recorder: ${e.message}")
             e.printStackTrace()
             releaseRecorder()
-            return false
+            return Pair(false, "Error initializing media recorder: ${e.message}")
         }
     }
     
