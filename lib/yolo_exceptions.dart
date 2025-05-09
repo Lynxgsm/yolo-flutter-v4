@@ -24,15 +24,24 @@ class RecordingResult {
   /// The reason for failure if [success] is false, or null if successful
   final String? reason;
 
+  /// The width used for recording
+  final int? width;
+
+  /// The height used for recording
+  final int? height;
+
   /// Creates a new recording result
-  RecordingResult({required this.success, this.reason});
+  RecordingResult(
+      {required this.success, this.reason, this.width, this.height});
 
   /// Creates a successful recording result
-  factory RecordingResult.success() => RecordingResult(success: true);
+  factory RecordingResult.success({int? width, int? height}) =>
+      RecordingResult(success: true, width: width, height: height);
 
   /// Creates a failed recording result with the given reason
-  factory RecordingResult.failure(String reason) =>
-      RecordingResult(success: false, reason: reason);
+  factory RecordingResult.failure(String reason, {int? width, int? height}) =>
+      RecordingResult(
+          success: false, reason: reason, width: width, height: height);
 }
 
 /// Exception thrown when a model fails to load.

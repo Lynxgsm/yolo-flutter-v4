@@ -1191,14 +1191,45 @@ class YoloView @JvmOverloads constructor(
      * Starts recording video of the camera feed with detection overlay
      * 
      * @param outputPath Path where the video should be saved. If null, a default path will be used.
-     * @return Pair of (success boolean, error message or null if successful)
+     * @return Triple of (success boolean, error message or null if successful, dimensions Map with width and height)
      */
-    fun startRecording(outputPath: String?): Pair<Boolean, String?> {
-        // Get viewport dimensions
-        val width = previewView.width
-        val height = previewView.height
+    fun startRecording(outputPath: String?): Triple<Boolean, String?, Map<String, Int>> {
+        var width = previewView.width
+        var height = previewView.height
+
+        Log.d(TAG, "Initial dimensions for recording - PreviewView: ${width}x${height}")
+
+        if (width <= 0 || height <= 0) {
+            Log.w(TAG, "PreviewView dimensions are zero! Using fallback dimensions.")
+            
+            val displayMetrics = context.resources.displayMetrics
+            Log.d(TAG, "Display metrics - width: ${displayMetrics.widthPixels}, height: ${displayMetrics.heightPixels}, density: ${displayMetrics.density}")
+            
+            if (displayMetrics.widthPixels > 0 && displayMetrics.heightPixels > 0) {
+                width = displayMetrics.widthPixels
+                height = displayMetrics.heightPixels
+                Log.d(TAG, "Using screen dimensions as fallback: ${width}x${height}")
+            } else {
+                width = 720
+                height = 1280
+                Log.d(TAG, "Using default dimensions: ${width}x${height}")
+            }
+        }
+
+        if (inferenceResult != null) {
+            Log.d(TAG, "Original image dimensions from inference result: ${inferenceResult?.origShape?.width}x${inferenceResult?.origShape?.height}")
+        }
+
+        val recordingResult = videoRecorder.startRecording(width, height, outputPath)
         
-        return videoRecorder.startRecording(width, height, outputPath)
+        val dimensions = HashMap<String, Int>()
+        dimensions["width"] = width
+        dimensions["height"] = height
+        
+        Log.d(TAG, "Returning dimensions in Triple: width=${dimensions["width"]}, height=${dimensions["height"]}")
+        Log.d(TAG, "Dimensions map class: ${dimensions.javaClass.name}")
+        
+        return Triple(recordingResult.first, recordingResult.second, dimensions)
     }
     
     /**

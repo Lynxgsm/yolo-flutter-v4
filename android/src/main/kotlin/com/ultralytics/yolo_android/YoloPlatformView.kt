@@ -190,20 +190,23 @@ class YoloPlatformView(
                         Log.d(TAG, "Starting recording with output path: $outputPath")
                         val recordingResult = yoloView.startRecording(outputPath)
                         
-                        if (recordingResult.first) {
-                            // Recording started successfully
-                            result.success(mapOf(
-                                "success" to true,
-                                "reason" to null
-                            ))
-                        } else {
-                            // Recording failed with reason
-                            Log.w(TAG, "Failed to start recording: ${recordingResult.second}")
-                            result.success(mapOf(
-                                "success" to false,
-                                "reason" to recordingResult.second
-                            ))
-                        }
+                        // Extract width and height directly from the dimensions map
+                        val width = recordingResult.third["width"] ?: 0
+                        val height = recordingResult.third["height"] ?: 0
+                        
+                        // Verify the types
+                        Log.d(TAG, "Width: $width (${width.javaClass.name}), Height: $height (${height.javaClass.name})")
+                        
+                        // Create a simple result map with primitives
+                        val resultMap = HashMap<String, Any?>()
+                        resultMap["success"] = recordingResult.first
+                        resultMap["reason"] = recordingResult.second
+                        resultMap["width"] = width
+                        resultMap["height"] = height
+                        
+                        // Log what we're sending to Flutter
+                        Log.d(TAG, "Sending recording result to Flutter: $resultMap")
+                        result.success(resultMap)
                     } catch (e: Exception) {
                         Log.e(TAG, "Error starting recording: ${e.message}", e)
                         result.error("START_RECORDING_ERROR", e.message, null)

@@ -237,17 +237,64 @@ class YoloViewController {
 
     if (_methodChannel != null) {
       try {
+        print('Starting recording, outputPath: $outputPath');
         final result = await _methodChannel!.invokeMethod('startRecording', {
           'outputPath': outputPath,
         });
 
+        print('Native result: $result (type: ${result.runtimeType})');
         if (result is Map) {
+          print('Result keys: ${result.keys.toList()}');
+          for (var key in result.keys) {
+            print(
+                'Key: $key, Value: ${result[key]} (type: ${result[key]?.runtimeType})');
+          }
+
+          // Extract success flag from the result
           final success = result['success'] as bool;
           final reason = result['reason'] as String?;
 
+          // Fix for width and height - handle different potential types
+          int? width;
+          int? height;
+
+          if (result.containsKey('width')) {
+            dynamic rawWidth = result['width'];
+            if (rawWidth != null) {
+              if (rawWidth is int) {
+                width = rawWidth;
+              } else {
+                // Try to convert other types to int
+                try {
+                  width = int.parse(rawWidth.toString());
+                } catch (e) {
+                  print('Error converting width to int: $e');
+                }
+              }
+            }
+          }
+
+          if (result.containsKey('height')) {
+            dynamic rawHeight = result['height'];
+            if (rawHeight != null) {
+              if (rawHeight is int) {
+                height = rawHeight;
+              } else {
+                // Try to convert other types to int
+                try {
+                  height = int.parse(rawHeight.toString());
+                } catch (e) {
+                  print('Error converting height to int: $e');
+                }
+              }
+            }
+          }
+
+          print('Parsed dimensions: width=$width, height=$height');
+
           if (success) {
             _isRecording = true;
-            return RecordingResult.success();
+            return RecordingResult.success(width: width, height: height);
           } else {
             // Map error codes to specific failure reasons if available in the error message
             String failureReason = reason ?? 'Unknown error starting recording';
@@ -268,9 +315,10 @@ class YoloViewController {
               }
             }
 
-            return RecordingResult.failure(failureReason);
+            return RecordingResult.failure(failureReason,
+                width: width, height: height);
           }
-        } else {
+        } else if (result is bool) {
           // Handle legacy response (boolean)
           final success = result == true;
           _isRecording = success;
@@ -278,6 +326,9 @@ class YoloViewController {
               ? RecordingResult.success()
               : RecordingResult.failure('Failed to start recording');
         }
+
+        // Handle any other unexpected return type
+        return RecordingResult.failure('Unexpected response from native code');
       } on PlatformException catch (e) {
         if (e.code == 'MODEL_NOT_LOADED') {
           throw ModelNotLoadedException(
