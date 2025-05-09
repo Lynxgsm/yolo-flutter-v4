@@ -1230,6 +1230,19 @@ class YoloView @JvmOverloads constructor(
     }
 
     /**
+     * Sets a callback to receive error notifications from the VideoRecorder.
+     * 
+     * @param callback The function to call when an error occurs
+     */
+    fun setVideoRecorderErrorCallback(callback: (Int, String) -> Unit) {
+        videoRecorder.setErrorCallback(object : VideoRecorder.ErrorCallback {
+            override fun onError(errorCode: Int, errorMessage: String) {
+                callback(errorCode, errorMessage)
+            }
+        })
+    }
+
+    /**
      * Releases the predictor resources
      */
     fun releasePredictor() {

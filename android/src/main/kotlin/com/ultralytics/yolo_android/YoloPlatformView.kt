@@ -299,6 +299,19 @@ class YoloPlatformView(
             // Set whether to show detection boxes
             yoloView.setShowBoxes(showBoxes)
             
+            // Set up video recorder error callback
+            yoloView.setVideoRecorderErrorCallback { errorCode, errorMessage ->
+                Log.d(TAG, "⭐️ VideoRecorder error callback received: [$errorCode] $errorMessage")
+                val errorInfo = mapOf(
+                    "errorCode" to errorCode,
+                    "errorMessage" to errorMessage
+                )
+                mainHandler.post {
+                    methodChannel.invokeMethod("onVideoRecorderError", errorInfo)
+                    Log.d(TAG, "⭐️ onVideoRecorderError method invoked on channel: $methodChannel")
+                }
+            }
+            
             // Set up callback for camera creation
             yoloView.setOnCameraCreatedCallback { width, height, facing ->
                 Log.d(TAG, "⭐️ Camera created callback received: ${width}x${height}, facing: $facing")

@@ -17,8 +17,21 @@ import java.util.concurrent.atomic.AtomicBoolean
  * Handles video recording of the YOLO detection feed
  */
 class VideoRecorder(private val context: Context) {
+    // Error callback interface
+    interface ErrorCallback {
+        fun onError(errorCode: Int, errorMessage: String)
+    }
+    
     companion object {
         private const val TAG = "VideoRecorder"
+        
+        const val ERROR_ALREADY_RECORDING = 1001
+        const val ERROR_DIRECTORY_CREATE = 1002
+        const val ERROR_FILE_ACCESS = 1003
+        const val ERROR_MEDIA_RECORDER_INIT = 1004
+        const val ERROR_MEDIA_RECORDER_PREPARE = 1005
+        const val ERROR_MEDIA_RECORDER_START = 1006
+        const val ERROR_MEDIA_RECORDER_ENCODE = 1007
     }
     
     // Recording components
@@ -34,6 +47,27 @@ class VideoRecorder(private val context: Context) {
     // Track if any frames have been encoded
     private var framesEncoded: Int = 0
     
+    // Error callback reference
+    private var errorCallback: ErrorCallback? = null
+    
+    /**
+     * Sets the error callback to communicate errors to Flutter
+     */
+    fun setErrorCallback(callback: ErrorCallback) {
+        this.errorCallback = callback
+    }
+    
+    /**
+     * Helper method to report errors both to logcat and through the callback
+     * Returns a formatted error message that includes the error code
+     */
+    private fun reportError(errorCode: Int, errorMessage: String): String {
+        val formattedMessage = "[$errorCode] $errorMessage"
+        Log.e(TAG, formattedMessage)
+        errorCallback?.onError(errorCode, errorMessage)
+        return formattedMessage
+    }
+    
     /**
      * Starts recording video of the camera feed
      * 
@@ -44,7 +78,9 @@ class VideoRecorder(private val context: Context) {
      */
     fun startRecording(width: Int, height: Int, outputPath: String?): Pair<Boolean, String?> {
         if (isRecording.get()) {
-            return Pair(false, "Recording already in progress")
+            val errorMsg = "Recording already in progress"
+            val formattedError = reportError(ERROR_ALREADY_RECORDING, errorMsg)
+            return Pair(false, formattedError)
         }
         
         try {
@@ -66,24 +102,63 @@ class VideoRecorder(private val context: Context) {
             val outputDir = outputFile.parentFile
             if (outputDir != null && !outputDir.exists()) {
                 if (!outputDir.mkdirs()) {
-                    return Pair(false, "Failed to create output directory")
+                    val errorMsg = "Failed to create output directory: ${outputDir.absolutePath}"
+                    val formattedError = reportError(ERROR_DIRECTORY_CREATE, errorMsg)
+                    return Pair(false, formattedError)
                 }
+            }
+            
+            // Check file access permissions before proceeding
+            try {
+                // Verify directory is writable
+                if (outputDir != null && !outputDir.canWrite()) {
+                    val errorMsg = "Cannot write to output directory: ${outputDir.absolutePath}"
+                    val formattedError = reportError(ERROR_FILE_ACCESS, errorMsg)
+                    return Pair(false, formattedError)
+                }
+                
+                // Check if file exists and can be overwritten
+                if (outputFile.exists()) {
+                    if (!outputFile.canWrite()) {
+                        val errorMsg = "Cannot overwrite existing file: $finalOutputPath"
+                        val formattedError = reportError(ERROR_FILE_ACCESS, errorMsg)
+                        return Pair(false, formattedError)
+                    }
+                    // Delete existing file to ensure clean recording
+                    if (!outputFile.delete()) {
+                        val errorMsg = "Failed to delete existing file: $finalOutputPath"
+                        val formattedError = reportError(ERROR_FILE_ACCESS, errorMsg)
+                        return Pair(false, formattedError)
+                    }
+                }
+                
+                // Try to create an empty file to verify write permissions
+                if (!outputFile.createNewFile()) {
+                    val errorMsg = "Failed to create output file: $finalOutputPath"
+                    val formattedError = reportError(ERROR_FILE_ACCESS, errorMsg)
+                    return Pair(false, formattedError)
+                }
+            } catch (e: Exception) {
+                val errorMsg = "File access error: ${e.message}"
+                val formattedError = reportError(ERROR_FILE_ACCESS, errorMsg)
+                return Pair(false, formattedError)
             }
             
             // Initialize media recorder
             val initResult = initializeMediaRecorder(width, height, finalOutputPath)
             if (!initResult.first) {
-                return Pair(false, initResult.second)
+                return initResult
             }
             
             isRecording.set(true)
             return Pair(true, null)
             
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to start recording: ${e.message}")
+            val errorMsg = "Failed to start recording: ${e.message}"
+            val formattedError = reportError(ERROR_MEDIA_RECORDER_INIT, errorMsg)
             e.printStackTrace()
             releaseRecorder()
-            return Pair(false, "Failed to start recording: ${e.message}")
+            return Pair(false, formattedError)
         }
     }
     
@@ -94,8 +169,25 @@ class VideoRecorder(private val context: Context) {
         val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
         val outputDir = File(context.getExternalFilesDir(null), "recordings")
         if (!outputDir.exists()) {
-            outputDir.mkdirs()
+            val created = outputDir.mkdirs()
+            if (!created) {
+                Log.e(TAG, "Failed to create default recording directory: ${outputDir.absolutePath}")
+                // Fall back to using the root external files directory if we can't create the subfolder
+                val fallbackDir = context.getExternalFilesDir(null)
+                Log.w(TAG, "Using fallback directory: ${fallbackDir?.absolutePath}")
+                return File(fallbackDir, "yolo_recording_$timestamp.mp4").absolutePath
+            }
         }
+        
+        // Check if directory is writable 
+        if (!outputDir.canWrite()) {
+            Log.e(TAG, "Default recording directory is not writable: ${outputDir.absolutePath}")
+            // Fall back to cache directory which should always be writable
+            val fallbackDir = context.cacheDir
+            Log.w(TAG, "Using fallback cache directory: ${fallbackDir.absolutePath}")
+            return File(fallbackDir, "yolo_recording_$timestamp.mp4").absolutePath
+        }
+        
         return File(outputDir, "yolo_recording_$timestamp.mp4").absolutePath
     }
     
@@ -140,26 +232,70 @@ class VideoRecorder(private val context: Context) {
                 // Set max file size to prevent empty files (100MB)
                 setMaxFileSize(100 * 1024 * 1024)
                 
-                // Prepare the recorder
-                prepare()
+                try {
+                    // Prepare the recorder
+                    Log.d(TAG, "Preparing MediaRecorder...")
+                    prepare()
+                    Log.d(TAG, "MediaRecorder prepare successful")
+                } catch (e: IllegalStateException) {
+                    val errorMsg = "MediaRecorder in illegal state: ${e.message}"
+                    val formattedError = reportError(ERROR_MEDIA_RECORDER_PREPARE, errorMsg)
+                    e.printStackTrace()
+                    return Pair(false, formattedError)
+                } catch (e: java.io.IOException) {
+                    // Check if this is a file access issue
+                    val outputFile = File(outputPath)
+                    val errorMsg = when {
+                        !outputFile.parentFile?.exists()!! -> "Directory doesn't exist: ${outputFile.parentFile?.absolutePath}"
+                        !outputFile.parentFile?.canWrite()!! -> "Cannot write to directory: ${outputFile.parentFile?.absolutePath}"
+                        outputFile.exists() && !outputFile.canWrite() -> "Cannot write to existing file: $outputPath"
+                        else -> "File access issue: ${e.message}"
+                    }
+                    val prepareError = "MediaRecorder prepare failed: $errorMsg"
+                    val formattedError = reportError(ERROR_MEDIA_RECORDER_PREPARE, prepareError)
+                    e.printStackTrace()
+                    return Pair(false, formattedError)
+                } catch (e: Exception) {
+                    val errorMsg = "MediaRecorder prepare failed with unexpected error: ${e.message}"
+                    val formattedError = reportError(ERROR_MEDIA_RECORDER_PREPARE, errorMsg)
+                    e.printStackTrace()
+                    return Pair(false, formattedError)
+                }
                 
                 // Get the surface to draw on AFTER preparing
                 recordingSurface = surface
                 
-                // Start recording immediately
-                start()
-                
                 if (recordingSurface == null) {
-                    return Pair(false, "Failed to get recording surface after prepare")
+                    val errorMsg = "Failed to get recording surface after prepare"
+                    val formattedError = reportError(ERROR_MEDIA_RECORDER_INIT, errorMsg)
+                    return Pair(false, formattedError)
+                }
+                
+                try {
+                    Log.d(TAG, "Starting MediaRecorder...")
+                    // Start recording immediately
+                    start()
+                    Log.d(TAG, "MediaRecorder start successful")
+                } catch (e: IllegalStateException) {
+                    val errorMsg = "MediaRecorder start error: ${e.message}"
+                    val formattedError = reportError(ERROR_MEDIA_RECORDER_START, errorMsg)
+                    e.printStackTrace()
+                    return Pair(false, formattedError)
+                } catch (e: Exception) {
+                    val errorMsg = "MediaRecorder start error: ${e.message}"
+                    val formattedError = reportError(ERROR_MEDIA_RECORDER_START, errorMsg)
+                    e.printStackTrace()
+                    return Pair(false, formattedError)
                 }
             }
             
             return Pair(true, null)
         } catch (e: Exception) {
-            Log.e(TAG, "Error initializing media recorder: ${e.message}")
+            val errorMsg = "Error initializing media recorder: ${e.message}"
+            val formattedError = reportError(ERROR_MEDIA_RECORDER_INIT, errorMsg)
             e.printStackTrace()
             releaseRecorder()
-            return Pair(false, "Error initializing media recorder: ${e.message}")
+            return Pair(false, formattedError)
         }
     }
     
@@ -321,7 +457,9 @@ class VideoRecorder(private val context: Context) {
                 surface.unlockCanvasAndPost(canvas)
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Error drawing to recording surface: ${e.message}")
+            val errorMsg = "Error drawing to recording surface: ${e.message}"
+            val formattedError = reportError(ERROR_MEDIA_RECORDER_ENCODE, errorMsg)
+            Log.e(TAG, formattedError)
             stopRecording()
         }
     }

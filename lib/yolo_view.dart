@@ -14,11 +14,23 @@ import 'yolo_task.dart';
 
 /// Controller for YoloView
 ///
-/// Used to control filtering settings for YoloView
+/// Used to control filtering settings for YoloView and handle video recording
 class YoloViewController {
   final GlobalKey<_YoloViewState> _key = GlobalKey<_YoloViewState>();
   MethodChannel? _methodChannel;
   bool _isRecording = false;
+
+  /// Callback for video recorder errors
+  ///
+  /// The callback provides both an error code and error message:
+  /// - Error code 1001: Already recording
+  /// - Error code 1002: Directory creation failed
+  /// - Error code 1003: File access issue
+  /// - Error code 1004: MediaRecorder initialization error
+  /// - Error code 1005: MediaRecorder prepare error
+  /// - Error code 1006: MediaRecorder start error
+  /// - Error code 1007: MediaRecorder encode error
+  Function(int errorCode, String errorMessage)? onVideoRecorderError;
 
   /// Set allowed classes for filtering detections
   ///
@@ -237,8 +249,26 @@ class YoloViewController {
             _isRecording = true;
             return RecordingResult.success();
           } else {
-            return RecordingResult.failure(
-                reason ?? 'Unknown error starting recording');
+            // Map error codes to specific failure reasons if available in the error message
+            String failureReason = reason ?? 'Unknown error starting recording';
+
+            // Include error code reference if we can extract it
+            if (reason != null) {
+              if (reason.contains("Cannot write to output directory") ||
+                  reason.contains("Cannot write to directory") ||
+                  reason.contains("Cannot overwrite existing file") ||
+                  reason.contains("File access issue")) {
+                failureReason = "File access error: $reason";
+              } else if (reason.contains("Failed to create output directory")) {
+                failureReason = "Directory creation failed: $reason";
+              } else if (reason.contains("MediaRecorder prepare failed")) {
+                failureReason = "MediaRecorder prepare error: $reason";
+              } else if (reason.contains("MediaRecorder start error")) {
+                failureReason = "MediaRecorder start error: $reason";
+              }
+            }
+
+            return RecordingResult.failure(failureReason);
           }
         } else {
           // Handle legacy response (boolean)
@@ -434,6 +464,36 @@ class YoloViewController {
   void _setMethodChannel(MethodChannel channel) {
     _methodChannel = channel;
     print('YoloViewController: Method channel set to $_methodChannel');
+  }
+
+  /// Set a callback to be notified of video recorder errors
+  ///
+  /// The callback receives an error code and error message with details about what went wrong.
+  /// Error codes:
+  /// - Error code 1001: Already recording
+  /// - Error code 1002: Directory creation failed
+  /// - Error code 1003: File access issue
+  /// - Error code 1004: MediaRecorder initialization error
+  /// - Error code 1005: MediaRecorder prepare error
+  /// - Error code 1006: MediaRecorder start error
+  /// - Error code 1007: MediaRecorder encode error
+  ///
+  /// Example usage:
+  /// ```dart
+  /// controller.setVideoRecorderErrorCallback((errorCode, errorMessage) {
+  ///   print('Video recorder error ($errorCode): $errorMessage');
+  ///
+  ///   // Handle specific error codes
+  ///   if (errorCode == 1003) {
+  ///     // Handle file access issues
+  ///   } else if (errorCode == 1005) {
+  ///     // Handle MediaRecorder prepare errors
+  ///   }
+  /// });
+  /// ```
+  void setVideoRecorderErrorCallback(
+      Function(int errorCode, String errorMessage) callback) {
+    onVideoRecorderError = callback;
   }
 }
 
@@ -647,6 +707,16 @@ class _YoloViewState extends State<YoloView> {
           print('onCameraCreated callback executed');
         } else {
           print('onCameraCreated callback is null');
+        }
+        return null;
+      case 'onVideoRecorderError':
+        if (widget.controller?.onVideoRecorderError != null) {
+          final errorInfo = Map<String, dynamic>.from(call.arguments);
+          final errorCode = errorInfo['errorCode'] as int;
+          final errorMessage = errorInfo['errorMessage'] as String;
+
+          print('Video recorder error: [$errorCode] $errorMessage');
+          widget.controller!.onVideoRecorderError!(errorCode, errorMessage);
         }
         return null;
       default:
