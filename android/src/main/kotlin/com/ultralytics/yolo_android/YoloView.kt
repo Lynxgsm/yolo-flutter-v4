@@ -1225,10 +1225,7 @@ class YoloView @JvmOverloads constructor(
         val dimensions = HashMap<String, Int>()
         dimensions["width"] = width
         dimensions["height"] = height
-        
-        Log.d(TAG, "Returning dimensions in Triple: width=${dimensions["width"]}, height=${dimensions["height"]}")
-        Log.d(TAG, "Dimensions map class: ${dimensions.javaClass.name}")
-        
+    
         return Triple(recordingResult.first, recordingResult.second, dimensions)
     }
     
