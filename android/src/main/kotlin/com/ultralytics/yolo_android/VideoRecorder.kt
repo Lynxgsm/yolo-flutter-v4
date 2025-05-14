@@ -74,13 +74,13 @@ class VideoRecorder(private val context: Context) {
      * @param width Width of the video
      * @param height Height of the video
      * @param outputPath Optional custom output path
-     * @return Pair of (success boolean, error message or null if successful)
+     * @return Triple of (success boolean, error message or null if successful, dimensions map)
      */
-    fun startRecording(width: Int, height: Int, outputPath: String?): Pair<Boolean, String?> {
+    fun startRecording(width: Int, height: Int, outputPath: String?): Triple<Boolean, String?, Map<String, Int>> {
         if (isRecording.get()) {
             val errorMsg = "Recording already in progress"
             val formattedError = reportError(ERROR_ALREADY_RECORDING, errorMsg)
-            return Pair(false, formattedError)
+            return Triple(false, formattedError, emptyMap())
         }
         
         try {
@@ -104,7 +104,7 @@ class VideoRecorder(private val context: Context) {
                 if (!outputDir.mkdirs()) {
                     val errorMsg = "Failed to create output directory: ${outputDir.absolutePath}"
                     val formattedError = reportError(ERROR_DIRECTORY_CREATE, errorMsg)
-                    return Pair(false, formattedError)
+                    return Triple(false, formattedError, emptyMap())
                 }
             }
             
@@ -114,7 +114,7 @@ class VideoRecorder(private val context: Context) {
                 if (outputDir != null && !outputDir.canWrite()) {
                     val errorMsg = "Cannot write to output directory: ${outputDir.absolutePath}"
                     val formattedError = reportError(ERROR_FILE_ACCESS, errorMsg)
-                    return Pair(false, formattedError)
+                    return Triple(false, formattedError, emptyMap())
                 }
                 
                 // Check if file exists and can be overwritten
@@ -122,13 +122,13 @@ class VideoRecorder(private val context: Context) {
                     if (!outputFile.canWrite()) {
                         val errorMsg = "Cannot overwrite existing file: $finalOutputPath"
                         val formattedError = reportError(ERROR_FILE_ACCESS, errorMsg)
-                        return Pair(false, formattedError)
+                        return Triple(false, formattedError, emptyMap())
                     }
                     // Delete existing file to ensure clean recording
                     if (!outputFile.delete()) {
                         val errorMsg = "Failed to delete existing file: $finalOutputPath"
                         val formattedError = reportError(ERROR_FILE_ACCESS, errorMsg)
-                        return Pair(false, formattedError)
+                        return Triple(false, formattedError, emptyMap())
                     }
                 }
                 
@@ -136,29 +136,37 @@ class VideoRecorder(private val context: Context) {
                 if (!outputFile.createNewFile()) {
                     val errorMsg = "Failed to create output file: $finalOutputPath"
                     val formattedError = reportError(ERROR_FILE_ACCESS, errorMsg)
-                    return Pair(false, formattedError)
+                    return Triple(false, formattedError, emptyMap())
                 }
             } catch (e: Exception) {
                 val errorMsg = "File access error: ${e.message}"
                 val formattedError = reportError(ERROR_FILE_ACCESS, errorMsg)
-                return Pair(false, formattedError)
+                return Triple(false, formattedError, emptyMap())
+            }
+
+            var widthToUse = 720
+            var heightToUse = 1280
+
+            // Initialize the media recorder
+            val initResult = initializeMediaRecorder(widthToUse, heightToUse, finalOutputPath)
+            if (!initResult.first) {
+                return Triple(false, initResult.second, emptyMap())
             }
             
-            // Initialize media recorder
-            val initResult = initializeMediaRecorder(width, height, finalOutputPath)
-            if (!initResult.first) {
-                return initResult
-            }
+            // Create dimensions map
+            val dimensions = HashMap<String, Int>()
+            dimensions["width"] = widthToUse
+            dimensions["height"] = heightToUse
             
             isRecording.set(true)
-            return Pair(true, null)
+            return Triple(true, null, dimensions)
             
         } catch (e: Exception) {
             val errorMsg = "Failed to start recording: ${e.message}"
             val formattedError = reportError(ERROR_MEDIA_RECORDER_INIT, errorMsg)
             e.printStackTrace()
             releaseRecorder()
-            return Pair(false, formattedError)
+            return Triple(false, formattedError, emptyMap())
         }
     }
     
@@ -230,7 +238,7 @@ class VideoRecorder(private val context: Context) {
                 }
                 
                 // Set max file size to prevent empty files (100MB)
-                setMaxFileSize(100 * 1024 * 1024)
+                // setMaxFileSize(100 * 1024 * 1024)
                 
                 try {
                     // Prepare the recorder

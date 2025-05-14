@@ -1197,36 +1197,7 @@ class YoloView @JvmOverloads constructor(
         var width = previewView.width
         var height = previewView.height
 
-        Log.d(TAG, "Initial dimensions for recording - PreviewView: ${width}x${height}")
-
-        if (width <= 0 || height <= 0) {
-            Log.w(TAG, "PreviewView dimensions are zero! Using fallback dimensions.")
-            
-            val displayMetrics = context.resources.displayMetrics
-            Log.d(TAG, "Display metrics - width: ${displayMetrics.widthPixels}, height: ${displayMetrics.heightPixels}, density: ${displayMetrics.density}")
-            
-            if (displayMetrics.widthPixels > 0 && displayMetrics.heightPixels > 0) {
-                width = displayMetrics.widthPixels
-                height = displayMetrics.heightPixels
-                Log.d(TAG, "Using screen dimensions as fallback: ${width}x${height}")
-            } else {
-                width = 720
-                height = 1280
-                Log.d(TAG, "Using default dimensions: ${width}x${height}")
-            }
-        }
-
-        if (inferenceResult != null) {
-            Log.d(TAG, "Original image dimensions from inference result: ${inferenceResult?.origShape?.width}x${inferenceResult?.origShape?.height}")
-        }
-
-        val recordingResult = videoRecorder.startRecording(width, height, outputPath)
-        
-        val dimensions = HashMap<String, Int>()
-        dimensions["width"] = width
-        dimensions["height"] = height
-    
-        return Triple(recordingResult.first, recordingResult.second, dimensions)
+        return videoRecorder.startRecording(width, height, outputPath)
     }
     
     /**
