@@ -169,6 +169,10 @@ class YoloView @JvmOverloads constructor(
     // Camera config
     private var lensFacing = CameraSelector.LENS_FACING_BACK
     private lateinit var cameraProviderFuture: ListenableFuture<ProcessCameraProvider>
+    
+    // Track camera resources that need cleanup
+    private var cameraExecutor: java.util.concurrent.Executor? = null
+    private var imageAnalysis: ImageAnalysis? = null
 
     // detection thresholds (外部から setter で変更可能に)
     private var confidenceThreshold = 0.25f
@@ -403,13 +407,13 @@ class YoloView @JvmOverloads constructor(
                         .setTargetAspectRatio(AspectRatio.RATIO_4_3)
                         .build()
 
-                    val imageAnalysis = ImageAnalysis.Builder()
+                    imageAnalysis = ImageAnalysis.Builder()
                         .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                         .setTargetAspectRatio(AspectRatio.RATIO_4_3)
                         .build()
 
-                    val executor = Executors.newSingleThreadExecutor()
-                    imageAnalysis.setAnalyzer(executor) { imageProxy ->
+                    cameraExecutor = Executors.newSingleThreadExecutor()
+                    imageAnalysis?.setAnalyzer(cameraExecutor!!) { imageProxy ->
                         onFrame(imageProxy)
                     }
 
@@ -432,7 +436,7 @@ class YoloView @JvmOverloads constructor(
                             lifecycleOwner,
                             cameraSelector,
                             preview,
-                            imageAnalysis
+                            imageAnalysis!!
                         )
 
                         Log.d(TAG, "Setting surface provider to previewView")
@@ -1242,19 +1246,24 @@ class YoloView @JvmOverloads constructor(
     }
 
     /**
-     * Releases the predictor resources
+     * Releases the predictor resources in a thread-safe manner
      */
     fun releasePredictor() {
         try {
-            val predictorRef = predictor
-            if (predictorRef != null) {
-                try {
-                    predictorRef.close()
-                    Log.d(TAG, "Predictor resources released")
-                } catch (e: Exception) {
-                    Log.e(TAG, "Error closing predictor", e)
+            // Use synchronized block to prevent concurrent access
+            synchronized(this) {
+                val predictorRef = predictor
+                if (predictorRef != null) {
+                    try {
+                        predictorRef.close()
+                        Log.d(TAG, "Predictor resources released")
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error closing predictor", e)
+                    } finally {
+                        // Always set to null even if close() throws
+                        predictor = null
+                    }
                 }
-                predictor = null
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error releasing predictor resources", e)
@@ -1265,43 +1274,119 @@ class YoloView @JvmOverloads constructor(
      * Disposes all resources used by the YoloView
      * This should be called when the view is no longer needed
      */
-    fun dispose() {
+    fun dispose() { 
         Log.d(TAG, "Disposing YoloView resources")
         
-        // Use a coroutine scope tied to the view's lifecycle
-        CoroutineScope(Dispatchers.Main).launch {
-            try {
-                // Stop recording
-                if (videoRecorder.isRecording()) {
-                    withContext(Dispatchers.IO) {
-                        videoRecorder.stopRecording()
-                    }
+        try {
+            // Immediately pause predictions to stop processing
+            isPredictionPaused = true
+            
+            // Clear callbacks first to prevent any late invocations
+            inferenceCallback = null
+            modelLoadCallback = null
+            cameraCreatedCallback = null
+            
+            // Stop video recording synchronously if needed
+            if (videoRecorder.isRecording()) {
+                try {
+                    videoRecorder.stopRecording()
+                    Log.d(TAG, "Video recording stopped during dispose")
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error stopping video recording during dispose", e)
                 }
-                
-                // Dispose VideoRecorder
-                videoRecorder.dispose()
-                Log.d(TAG, "VideoRecorder disposed")
-                
-                // Release predictor
-                releasePredictor() // Ensure this is thread-safe
-                
-                // Release camera resources - must be on main thread
-                val cameraProvider = ProcessCameraProvider.getInstance(context).get()
-                cameraProvider.unbindAll()
-                
-                // Clear callbacks and views on UI thread
-                inferenceCallback = null
-                modelLoadCallback = null
-                cameraCreatedCallback = null
+            }
+            
+            // Use a simple coroutine scope for async cleanup
+            CoroutineScope(Dispatchers.Main).launch {
+                disposeResourcesAsync()
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error during initial dispose setup", e)
+            // Still try to clean up basic resources synchronously
+            try {
                 removeAllViews()
-                
-                Log.d(TAG, "YoloView resources disposed")
-            } catch (e: Exception) {
-                Log.e(TAG, "Error during YoloView dispose", e)
+                releasePredictor()
+            } catch (cleanupException: Exception) {
+                Log.e(TAG, "Error during fallback cleanup", cleanupException)
             }
         }
     }
-
+    
+    /**
+     * Asynchronously disposes resources that require coroutine context
+     */
+    private suspend fun disposeResourcesAsync() {
+        try {
+            // Release camera resources on main thread (Camera2 requires main thread)
+            try {
+                // Clear image analysis analyzer first to stop processing
+                imageAnalysis?.clearAnalyzer()
+                Log.d(TAG, "Image analysis analyzer cleared")
+                
+                // Unbind all camera use cases
+                val cameraProviderFuture = ProcessCameraProvider.getInstance(context)
+                val cameraProvider = cameraProviderFuture.get()
+                cameraProvider.unbindAll()
+                Log.d(TAG, "Camera use cases unbound")
+                
+                // Shutdown camera executor on background thread
+                withContext(Dispatchers.IO) {
+                    try {
+                        val executor = cameraExecutor
+                        if (executor is java.util.concurrent.ExecutorService) {
+                            executor.shutdown()
+                            if (!executor.awaitTermination(2, java.util.concurrent.TimeUnit.SECONDS)) {
+                                executor.shutdownNow()
+                                Log.w(TAG, "Camera executor forced shutdown")
+                            } else {
+                                Log.d(TAG, "Camera executor shutdown gracefully")
+                            }
+                        }
+                        cameraExecutor = null
+                        imageAnalysis = null
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error shutting down camera executor", e)
+                    }
+                }
+                
+                Log.d(TAG, "All camera resources released")
+            } catch (e: Exception) {
+                Log.e(TAG, "Error releasing camera resources", e)
+            }
+            
+            // Dispose VideoRecorder on IO thread
+            withContext(Dispatchers.IO) {
+                try {
+                    videoRecorder.dispose()
+                    Log.d(TAG, "VideoRecorder disposed")
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error disposing VideoRecorder", e)
+                }
+            }
+            
+            // Release predictor on background thread
+            withContext(Dispatchers.Default) {
+                try {
+                    releasePredictor()
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error releasing predictor during async dispose", e)
+                }
+            }
+            
+            // Final UI cleanup on main thread
+            withContext(Dispatchers.Main) {
+                try {
+                    removeAllViews()
+                    Log.d(TAG, "YoloView resources disposed successfully")
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error removing views during dispose", e)
+                }
+            }
+            
+        } catch (e: Exception) {
+            Log.e(TAG, "Error during async resource disposal", e)
+        }
+    }
 
     /**
      * Pauses or resumes live predictions. When paused, the camera feed continues
