@@ -5,6 +5,8 @@ import android.app.Activity
 import android.content.Context
 import android.content.pm.PackageManager
 import android.graphics.*
+import android.os.Handler
+import android.os.Looper
 import android.util.AttributeSet
 import android.util.Log
 import android.view.*
@@ -393,6 +395,23 @@ class YoloView @JvmOverloads constructor(
         ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED
     }
 
+    private fun setSurfaceProviderWhenReady(preview: Preview) {
+        if (previewView.isAttachedToWindow && previewView.width > 0 && previewView.height > 0) {
+            preview.setSurfaceProvider(previewView.surfaceProvider)
+            Log.d(TAG, "Surface provider set (view attached and measured)")
+        } else {
+            previewView.viewTreeObserver.addOnGlobalLayoutListener(object : ViewTreeObserver.OnGlobalLayoutListener {
+                override fun onGlobalLayout() {
+                    if (previewView.isAttachedToWindow && previewView.width > 0 && previewView.height > 0) {
+                        previewView.viewTreeObserver.removeOnGlobalLayoutListener(this)
+                        preview.setSurfaceProvider(previewView.surfaceProvider)
+                        Log.d(TAG, "Surface provider set (after waiting for layout)")
+                    }
+                }
+            })
+        }
+    }
+
     fun startCamera() {
         Log.d(TAG, "Starting camera...")
 
@@ -440,11 +459,11 @@ class YoloView @JvmOverloads constructor(
                         )
 
                         Log.d(TAG, "Setting surface provider to previewView")
-                        preview.setSurfaceProvider(previewView.surfaceProvider)
+                        setSurfaceProviderWhenReady(preview)
                         Log.d(TAG, "Camera setup completed successfully")
 
                         // Add a small delay to ensure the preview view has been measured
-                        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                        Handler(Looper.getMainLooper()).postDelayed({
                             val width = previewView.width
                             val height = previewView.height
                             Log.d(TAG, "⭐️ About to send camera created callback: ${width}x${height}, facing: $lensFacing")

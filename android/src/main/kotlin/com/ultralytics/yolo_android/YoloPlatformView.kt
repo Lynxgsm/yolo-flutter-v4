@@ -332,8 +332,6 @@ class YoloPlatformView(
             
             // Set up callback for inference results
             yoloView.setOnInferenceCallback { result ->
-                Log.d(TAG, "Inference result received: ${result.boxes.size} detections")
-                
                 // Convert result to map for Flutter
                 val resultMap = HashMap<String, Any>()
                 
