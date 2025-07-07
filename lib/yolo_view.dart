@@ -66,6 +66,23 @@ class YoloViewController {
     }
   }
 
+  /// Set confidence threshold for the model (affects which detections are produced by the model)
+  ///
+  /// Value should be between 0.0 and 1.0
+  Future<void> setConfidenceThreshold(double confidence) async {
+    if (_methodChannel != null) {
+      try {
+        await _methodChannel!.invokeMethod('setConfidenceThreshold', {
+          'confidence': confidence,
+        });
+      } catch (e) {
+        print('Error setting confidence threshold: $e');
+      }
+    } else {
+      print('Warning: Method channel not initialized yet');
+    }
+  }
+
   /// Initialize the camera if it hasn't been initialized yet
   ///
   /// This is useful if you need to manually trigger camera initialization
@@ -670,6 +687,17 @@ class YoloView extends StatefulWidget {
     }
   }
 
+  /// Set confidence threshold for the model (affects which detections are produced by the model)
+  ///
+  /// Value should be between 0.0 and 1.0
+  static Future<void> setConfidenceThreshold(
+      BuildContext context, double confidence) async {
+    final state = context.findAncestorStateOfType<_YoloViewState>();
+    if (state != null) {
+      await state.setConfidenceThreshold(confidence);
+    }
+  }
+
   /// Set whether to show detection boxes
   ///
   /// This allows toggling detection box visibility at runtime
@@ -801,6 +829,19 @@ class _YoloViewState extends State<YoloView> {
       });
     } catch (e) {
       print('Error setting min confidence: $e');
+    }
+  }
+
+  /// Set confidence threshold for the model (affects which detections are produced by the model)
+  ///
+  /// Value should be between 0.0 and 1.0
+  Future<void> setConfidenceThreshold(double confidence) async {
+    try {
+      await _methodChannel.invokeMethod('setConfidenceThreshold', {
+        'confidence': confidence,
+      });
+    } catch (e) {
+      print('Error setting confidence threshold: $e');
     }
   }
 

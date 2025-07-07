@@ -252,6 +252,16 @@ class YoloPlatformView(
                         result.error("IS_PAUSED_ERROR", e.message, null)
                     }
                 }
+                "setConfidenceThreshold" -> {
+                    try {
+                        val confidence = call.argument<Double>("confidence") ?: 0.25
+                        yoloView.setConfidenceThreshold(confidence)
+                        result.success(null)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error setting confidence threshold: ", e)
+                        result.error("SET_CONFIDENCE_THRESHOLD_ERROR", e.message, null)
+                    }
+                }
                 "dispose" -> {
                     try {
                         Log.d(TAG, "Disposing YoloPlatformView")
