@@ -306,6 +306,7 @@ class YoloView @JvmOverloads constructor(
 
     fun setConfidenceThreshold(conf: Double) {
         confidenceThreshold = conf.toFloat()
+        Log.d(TAG, "setConfidenceThreshold called with value: $conf")
         (predictor as? ObjectDetector)?.setConfidenceThreshold(conf.toFloat())
     }
 
