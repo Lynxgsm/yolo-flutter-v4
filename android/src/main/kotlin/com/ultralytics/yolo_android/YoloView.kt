@@ -1215,13 +1215,14 @@ class YoloView @JvmOverloads constructor(
      * Starts recording video of the camera feed with detection overlay
      * 
      * @param outputPath Path where the video should be saved. If null, a default path will be used.
+     * @param enableAudio Whether to record audio (default: false)
      * @return Triple of (success boolean, error message or null if successful, dimensions Map with width and height)
      */
-    fun startRecording(outputPath: String?): Triple<Boolean, String?, Map<String, Int>> {
+    fun startRecording(outputPath: String?, enableAudio: Boolean = false): Triple<Boolean, String?, Map<String, Int>> {
         var width = previewView.width
         var height = previewView.height
 
-        return videoRecorder.startRecording(width, height, outputPath)
+        return videoRecorder.startRecording(width, height, outputPath, enableAudio)
     }
     
     /**

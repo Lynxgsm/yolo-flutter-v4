@@ -187,8 +187,9 @@ class YoloPlatformView(
                 "startRecording" -> {
                     try {
                         val outputPath = call.argument<String>("outputPath")
-                        Log.d(TAG, "Starting recording with output path: $outputPath")
-                        val recordingResult = yoloView.startRecording(outputPath)
+                        val enableAudio = call.argument<Boolean>("enableAudio") ?: false
+                        Log.d(TAG, "Starting recording with output path: $outputPath, enableAudio: $enableAudio")
+                        val recordingResult = yoloView.startRecording(outputPath, enableAudio)
                         
                         // Extract width and height directly from the dimensions map
                         val width = recordingResult.third["width"] ?: 0

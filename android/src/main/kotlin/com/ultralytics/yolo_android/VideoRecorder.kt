@@ -74,9 +74,10 @@ class VideoRecorder(private val context: Context) {
      * @param width Width of the video
      * @param height Height of the video
      * @param outputPath Optional custom output path
+     * @param enableAudio Whether to record audio (default: false)
      * @return Triple of (success boolean, error message or null if successful, dimensions map)
      */
-    fun startRecording(width: Int, height: Int, outputPath: String?): Triple<Boolean, String?, Map<String, Int>> {
+    fun startRecording(width: Int, height: Int, outputPath: String?, enableAudio: Boolean = false): Triple<Boolean, String?, Map<String, Int>> {
         if (isRecording.get()) {
             val errorMsg = "Recording already in progress"
             val formattedError = reportError(ERROR_ALREADY_RECORDING, errorMsg)
@@ -148,7 +149,7 @@ class VideoRecorder(private val context: Context) {
             var heightToUse = 1280
 
             // Initialize the media recorder
-            val initResult = initializeMediaRecorder(widthToUse, heightToUse, finalOutputPath)
+            val initResult = initializeMediaRecorder(widthToUse, heightToUse, finalOutputPath, enableAudio)
             if (!initResult.first) {
                 return Triple(false, initResult.second, emptyMap())
             }
@@ -203,7 +204,7 @@ class VideoRecorder(private val context: Context) {
      * Initialize the MediaRecorder with the appropriate settings
      * @return Pair of (success boolean, error message or null if successful)
      */
-    private fun initializeMediaRecorder(width: Int, height: Int, outputPath: String): Pair<Boolean, String?> {
+    private fun initializeMediaRecorder(width: Int, height: Int, outputPath: String, enableAudio: Boolean = false): Pair<Boolean, String?> {
         releaseRecorder() // Release any existing recorder
         
         try {
@@ -222,9 +223,15 @@ class VideoRecorder(private val context: Context) {
             Log.d(TAG, "Configuring recorder with ${recordWidth}x${recordHeight} (isLandscape=$isLandscape)")
             
             mediaRecorder?.apply {
-                // Only using SURFACE as video source - no audio source is set (video only recording)
+                if (enableAudio) {
+                    // Make sure RECORD_AUDIO permission is granted in the app manifest and at runtime
+                    setAudioSource(MediaRecorder.AudioSource.MIC)
+                }
                 setVideoSource(MediaRecorder.VideoSource.SURFACE)
                 setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
+                if (enableAudio) {
+                    setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
+                }
                 setVideoEncoder(MediaRecorder.VideoEncoder.H264)
                 setVideoSize(recordWidth, recordHeight)
                 setVideoFrameRate(30)
