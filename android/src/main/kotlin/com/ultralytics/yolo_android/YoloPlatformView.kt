@@ -263,6 +263,35 @@ class YoloPlatformView(
                         result.error("SET_CONFIDENCE_THRESHOLD_ERROR", e.message, null)
                     }
                 }
+                "setDetectionSaveEnabled" -> {
+                    try {
+                        val enabled = call.argument<Boolean>("enabled") ?: false
+                        if (enabled) {
+                            yoloView.setOnDetectionSaveCallback { path ->
+                                mainHandler.post {
+                                    methodChannel.invokeMethod("onDetectionImageSaved", mapOf("path" to path))
+                                }
+                            }
+                        } else {
+                            yoloView.setOnDetectionSaveCallback(null)
+                        }
+                        result.success(null)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error setting detection save enabled: ${e.message}", e)
+                        result.error("SET_DETECTION_SAVE_ENABLED_ERROR", e.message, null)
+                    }
+                }
+                "setDetectionSaveDirectory" -> {
+                    try {
+                        val dirPath = call.argument<String>("directory")
+                        val dir = if (dirPath != null) java.io.File(dirPath) else null
+                        yoloView.setDetectionSaveDirectory(dir)
+                        result.success(null)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error setting detection save directory: ${e.message}", e)
+                        result.error("SET_DETECTION_SAVE_DIRECTORY_ERROR", e.message, null)
+                    }
+                }
                 "dispose" -> {
                     try {
                         Log.d(TAG, "Disposing YoloPlatformView")

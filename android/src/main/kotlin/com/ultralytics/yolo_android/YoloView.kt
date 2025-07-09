@@ -153,6 +153,28 @@ class YoloView @JvmOverloads constructor(
         this.cameraCreatedCallback = callback
     }
 
+    // Detection image save callback and throttle
+    private var detectionSaveCallback: ((String) -> Unit)? = null
+    private var lastDetectionSaveTime: Long = 0L
+    private var detectionSaveEnabled: Boolean = false
+    private var detectionSaveDirectory: java.io.File? = null
+
+    /**
+     * Set a callback to save an image when a detection is found.
+     * The callback receives the saved file path. Pass null to disable.
+     */
+    fun setOnDetectionSaveCallback(callback: ((String) -> Unit)?) {
+        detectionSaveCallback = callback
+        detectionSaveEnabled = callback != null
+    }
+
+    /**
+     * Set the directory where detection images will be saved. Pass null to use the default cache directory.
+     */
+    fun setDetectionSaveDirectory(directory: java.io.File?) {
+        detectionSaveDirectory = directory
+    }
+
     // Use a PreviewView, forcing a TextureView under the hood
     internal val previewView: PreviewView = PreviewView(context).apply {
         // Force TextureView usage so the overlay can be on top
@@ -521,6 +543,15 @@ class YoloView @JvmOverloads constructor(
                     // For camera feed, we typically rotate the bitmap
                     val result = p.predict(bitmap, h, w, rotateForCamera = true)
                     inferenceResult = result
+
+                    // Save detection image if enabled, detection found, and throttled
+                    if (detectionSaveEnabled && result.boxes.isNotEmpty()) {
+                        val now = System.currentTimeMillis()
+                        if (now - lastDetectionSaveTime > 1000) { // throttle: 1s
+                            lastDetectionSaveTime = now
+                            saveDetectionImageAsync(bitmap.copy(Bitmap.Config.ARGB_8888, true))
+                        }
+                    }
 
                     // Log
                     // Log.d(TAG, "Inference complete: ${result.boxes.size} boxes detected")
@@ -1436,5 +1467,33 @@ class YoloView @JvmOverloads constructor(
      */
     fun isPredictionPaused(): Boolean {
         return isPredictionPaused
+    }
+
+    /**
+     * Save the given bitmap to a file asynchronously and invoke the detectionSaveCallback.
+     */
+    private fun saveDetectionImageAsync(bitmap: Bitmap) {
+        // Save in background to avoid blocking UI/inference
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val fileName = "detection_" + System.currentTimeMillis().toString() + ".jpg"
+                val dir = detectionSaveDirectory ?: context.cacheDir
+                if (!dir.exists()) dir.mkdirs()
+                val file = java.io.File(dir, fileName)
+                val outputStream = java.io.FileOutputStream(file)
+                bitmap.compress(Bitmap.CompressFormat.JPEG, 90, outputStream)
+                outputStream.flush()
+                outputStream.close()
+                bitmap.recycle()
+                Log.d(TAG, "Detection image saved: ${file.absolutePath}")
+                detectionSaveCallback?.let { cb ->
+                    Handler(Looper.getMainLooper()).post {
+                        cb(file.absolutePath)
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to save detection image", e)
+            }
+        }
     }
 }

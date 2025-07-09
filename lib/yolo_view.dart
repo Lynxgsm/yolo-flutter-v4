@@ -20,6 +20,9 @@ class YoloViewController {
   MethodChannel? _methodChannel;
   bool _isRecording = false;
 
+  /// Callback for when a detection image is saved
+  void Function(String path)? onDetectionImageSaved;
+
   /// Callback for video recorder errors
   ///
   /// The callback provides both an error code and error message:
@@ -192,6 +195,36 @@ class YoloViewController {
         });
       } catch (e) {
         print('Error setting label background color: $e');
+      }
+    } else {
+      print('Warning: Method channel not initialized yet');
+    }
+  }
+
+  /// Enable or disable saving detection images. When enabled, the controller's callback will be called with the saved file path.
+  Future<void> setDetectionSaveEnabled(bool enabled) async {
+    if (_methodChannel != null) {
+      try {
+        await _methodChannel!.invokeMethod('setDetectionSaveEnabled', {
+          'enabled': enabled,
+        });
+      } catch (e) {
+        print('Error setting detection save enabled: $e');
+      }
+    } else {
+      print('Warning: Method channel not initialized yet');
+    }
+  }
+
+  /// Set the directory where detection images will be saved. Pass null to use the default cache directory.
+  Future<void> setDetectionSaveDirectory(String? directory) async {
+    if (_methodChannel != null) {
+      try {
+        await _methodChannel!.invokeMethod('setDetectionSaveDirectory', {
+          'directory': directory,
+        });
+      } catch (e) {
+        print('Error setting detection save directory: $e');
       }
     } else {
       print('Warning: Method channel not initialized yet');
@@ -754,6 +787,24 @@ class YoloView extends StatefulWidget {
     }
   }
 
+  /// Enable or disable saving detection images. When enabled, the controller's callback will be called with the saved file path.
+  static Future<void> setDetectionSaveEnabled(
+      BuildContext context, bool enabled) async {
+    final state = context.findAncestorStateOfType<_YoloViewState>();
+    if (state != null) {
+      await state.setDetectionSaveEnabled(enabled);
+    }
+  }
+
+  /// Set the directory where detection images will be saved. Pass null to use the default cache directory.
+  static Future<void> setDetectionSaveDirectory(
+      BuildContext context, String? directory) async {
+    final state = context.findAncestorStateOfType<_YoloViewState>();
+    if (state != null) {
+      await state.setDetectionSaveDirectory(directory);
+    }
+  }
+
   @override
   State<YoloView> createState() => _YoloViewState();
 }
@@ -800,6 +851,13 @@ class _YoloViewState extends State<YoloView> {
 
           print('Video recorder error: [$errorCode] $errorMessage');
           widget.controller!.onVideoRecorderError!(errorCode, errorMessage);
+        }
+        return null;
+      case 'onDetectionImageSaved':
+        if (widget.controller?.onDetectionImageSaved != null) {
+          final path = (call.arguments as Map)['path'] as String;
+          print('Detection image saved at: $path');
+          widget.controller!.onDetectionImageSaved!(path);
         }
         return null;
       default:
@@ -913,6 +971,28 @@ class _YoloViewState extends State<YoloView> {
       });
     } catch (e) {
       print('Error setting label background color: $e');
+    }
+  }
+
+  /// Enable or disable saving detection images. When enabled, the controller's callback will be called with the saved file path.
+  Future<void> setDetectionSaveEnabled(bool enabled) async {
+    try {
+      await _methodChannel.invokeMethod('setDetectionSaveEnabled', {
+        'enabled': enabled,
+      });
+    } catch (e) {
+      print('Error setting detection save enabled: $e');
+    }
+  }
+
+  /// Set the directory where detection images will be saved. Pass null to use the default cache directory.
+  Future<void> setDetectionSaveDirectory(String? directory) async {
+    try {
+      await _methodChannel.invokeMethod('setDetectionSaveDirectory', {
+        'directory': directory,
+      });
+    } catch (e) {
+      print('Error setting detection save directory: $e');
     }
   }
 
