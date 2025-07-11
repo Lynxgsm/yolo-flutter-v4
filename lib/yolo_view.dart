@@ -237,12 +237,14 @@ class YoloViewController {
   ///
   /// [outputPath] is the file path where the video will be saved.
   /// If not provided, a default path will be used.
+  /// [enableAudio] controls whether audio is recorded (default: false)
   ///
   /// Returns a [RecordingResult] with success status and error reason if unsuccessful.
   ///
   /// @throws [PlatformNotSupportedException] if called on non-Android platform
   /// @throws [ModelNotLoadedException] if the model has not been loaded
-  Future<RecordingResult> startRecording({String? outputPath}) async {
+  Future<RecordingResult> startRecording(
+      {String? outputPath, bool enableAudio = false}) async {
     if (!Platform.isAndroid) {
       throw PlatformNotSupportedException(
           'Video recording is only supported on Android');
@@ -254,9 +256,11 @@ class YoloViewController {
 
     if (_methodChannel != null) {
       try {
-        print('Starting recording, outputPath: $outputPath');
+        print(
+            'Starting recording, outputPath: $outputPath, enableAudio: $enableAudio');
         final result = await _methodChannel!.invokeMethod('startRecording', {
           'outputPath': outputPath,
+          'enableAudio': enableAudio,
         });
 
         print('Native result: $result (type: ${result.runtimeType})');
