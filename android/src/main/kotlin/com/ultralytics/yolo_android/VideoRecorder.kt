@@ -145,8 +145,8 @@ class VideoRecorder(private val context: Context) {
                 return Triple(false, formattedError, emptyMap())
             }
 
-            var widthToUse = 720
-            var heightToUse = 1280
+            var widthToUse = 1080
+            var heightToUse = 1920
 
             // Initialize the media recorder
             val initResult = initializeMediaRecorder(widthToUse, heightToUse, finalOutputPath, enableAudio)
@@ -234,9 +234,8 @@ class VideoRecorder(private val context: Context) {
                 }
                 setVideoEncoder(MediaRecorder.VideoEncoder.H264)
                 setVideoSize(recordWidth, recordHeight)
-                setVideoFrameRate(30)
+                // setVideoFrameRate(60)
                 setVideoEncodingBitRate(10000000) // 10Mbps
-                
                 setOutputFile(outputPath)
                 
                 // Only set orientation hint if needed

@@ -433,9 +433,8 @@ class YoloPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler
         setVideoSource(MediaRecorder.VideoSource.CAMERA)
         setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
         setVideoEncoder(MediaRecorder.VideoEncoder.H264)
-        setVideoSize(1280, 720) // HD resolution
+        setVideoSize(1080, 1920) // 1080p resolution
         setVideoFrameRate(30)
-        setVideoEncodingBitRate(10000000) // 10 Mbps
         setOutputFile(outputFile.absolutePath)
         
         try {

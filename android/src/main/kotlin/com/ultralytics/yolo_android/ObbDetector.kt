@@ -69,7 +69,7 @@ class ObbDetector(
                                 val namesMap = data["names"] as? Map<Int, String>
                                 if (namesMap != null) {
                                     this.labels = namesMap.values.toList()
-                                    Log.d("ObbDetector", "Loaded labels from metadata: $labels")
+                                    // Log.d("ObbDetector", "Loaded labels from metadata: $labels")
                                 } else {}
                             } else {}
                         } catch (ex: Exception) {
